@@ -69,14 +69,10 @@ class Record(models.Model):
     expense_id = models.CharField(max_length=10, blank=True)
 
     @classmethod
-    def start(cls, user, kind, bank_code, branch_code, account, account_name):
+    def start(cls, user, kind):
         record = cls(
             user=user,
             kind=kind,
-            bank_code=bank_code,
-            branch_code=branch_code,
-            account=account,
-            account_name=account_name
             edit_time=timezone.now()
         )
         return record
@@ -114,15 +110,26 @@ class Record(models.Model):
 
     def void(self):
         self.state = VOIDED
+        self.finalize_time = timezone.now()
         return self
 
     def restart(self):
         if (self.state is REJECTED):
-            record = Record.start(self.user, self.kind, self.bank_code, self.branch_code, self.account, self.account_name)
-            record.serial_number = self.serial_number
-            record.save()
             self.state = RESTARTED
+            self.finalize_time = timezone.now()
             self.save()
+
+            record = Record.start(self.user, self.kind)
+            record = Record.edit({
+                'bank_code': self.bank_code,
+                'branch_code': self.branch_code,
+                'account': self.account,
+                'account_name': self.account_name
+            })
+            record.save()
+
+            Receipt.objects.filter(record=self).update(record=record)
+
             return record
         else:
             raise Exception('Record is not rejected, cannot be copied: %s', self.id)
