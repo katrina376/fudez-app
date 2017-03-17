@@ -1,7 +1,7 @@
 from django.db import models
 from django.utils import timezone
 
-class Record(models.Model):
+class Reimbursement(models.Model):
     # Kind Choices
     ADVANCE = 'A'
     REIMBURSE = 'R'
@@ -19,9 +19,7 @@ class Record(models.Model):
     STATE_CHOICES = (
         (EDITABLE, '可編輯'),
         (SUBMITTED, '已送出'),
-        (REJECTED, '被駁回'),
-        (VOIDED, '作廢'),
-        (RESTARTED, '重啟')
+        (VOIDED, '作廢')
     )
 
     # Progress Choices
@@ -86,20 +84,19 @@ class Record(models.Model):
             raise Exception('This record is not editable: %s', self.id)
 
     def submit(self):
-        if (self.serial_number is '')
-            # id = yyyymmdd + dep_id[dd]+ no[dd]
-            now = timezone.now()
-            year = now.year
-            month = now.month
-            day = now.day
+        # id = yyyymmdd + dep_id[dd]+ no[dd]
+        now = timezone.now()
+        year = now.year
+        month = now.month
+        day = now.day
 
-            # department_id
-            department = self.user.department
-            # count of the records
-            count = len( Record.objects.filter(user__department=department).filter(submit_time__date=now).exclude(serial_number__isnull=True) ) + 1
-            # TODO: catch exception if department and users do not match
+        # department_id
+        department = self.user.department
+        # count of the records
+        count = len(Record.objects.filter(user__department=department).filter(submit_time__date=now)) + 1
+        # TODO: catch exception if department and users do not match
 
-            self.serial_number = str('{:4d}{:2d}{:2d}{:2d}{:2d}'.format(year, month, day, department.id, count))
+        self.serial_number = str('{:4d}{:2d}{:2d}{:2d}{:2d}'.format(year, month, day, department.id, count))
 
         self.state = SUBMITTED
         self.progress = IN_PROGRESS
@@ -150,24 +147,30 @@ class Record(models.Model):
         if (self.kind == REIMBURSE):
             if (self.chief_approve and self.staff_review):
                 self.progress = CLOSE_UP
+                self.finalize_time = timezone.now()
                 self.save()
         return self
 
     def reject(self, identity, reason):
         if (identity is '財務部部長'):
             self.progress = REJECT
-            self.state = REJECTED
             self.chief_approve = False
             self.chief_reject_reason = reason
             self.save()
         elif (identity is '財務部部員'):
             self.progress = REJECT
-            self.state = REJECTED
             self.staff_approve = False
             self.staff_reject_reason = reason
             self.save()
         else:
             raise ValueError('Identity is not valid: %s', identity)
+
+    def close(self):
+        if (self.state is not SUBMITTED):
+            self.finalize_time = timezone.now()
+            self.save()
+        else:
+            raise Exception('Record cannot be closed since it was submitted: %s', self.serial_number)
 
     # For chief of the department of finance to set the pay date
     def set_pay_date(self, date):
