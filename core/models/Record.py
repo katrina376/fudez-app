@@ -127,9 +127,6 @@ class Record(models.Model):
                 'account_name': self.account_name
             })
             record.save()
-
-            Receipt.objects.filter(record=self).update(record=record)
-
             return record
         else:
             raise Exception('Record is not rejected, cannot be copied: %s', self.id)
