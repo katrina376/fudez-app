@@ -191,4 +191,4 @@ class Record(models.Model):
         return self.expense_id
 
     def __str__(self):
-        return 'Record: Unique ID %s, serial number %s'.format(str(self.id),str(self.serial_number))
+        return 'Record: Unique ID {0}, serial number {1}'.format(str(self.id),str(self.serial_number))
