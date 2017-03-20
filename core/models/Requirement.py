@@ -1,7 +1,7 @@
 from django.db import models
 from django.utils import timezone
 
-class Reimbursement(models.Model):
+class Requirement(models.Model):
     # Kind Choices
     ADVANCE = 'A'
     REIMBURSE = 'R'
@@ -68,11 +68,11 @@ class Reimbursement(models.Model):
 
     @classmethod
     def open(cls, user, kind):
-        record = cls(
+        requirement = cls(
             user=user,
             kind=kind,
         )
-        return record
+        return requirement
 
     def edit(self, edit_dict):
         if (self.editable):
@@ -81,7 +81,7 @@ class Reimbursement(models.Model):
             self.edit_time = timezone.now()
             self.save()
         else:
-            raise Exception('This record is not editable: %s', self.id)
+            raise Exception('This requirement is not editable: %s', self.id)
 
     def submit(self):
         # id = yyyymmdd + dep_id[dd]+ no[dd]
@@ -92,8 +92,8 @@ class Reimbursement(models.Model):
 
         # department_id
         department = self.user.department
-        # count of the records
-        count = len(Record.objects.filter(user__department=department).filter(submit_time__date=now)) + 1
+        # count of the requirements
+        count = len(Requirement.objects.filter(user__department=department).filter(submit_time__date=now)) + 1
         # TODO: catch exception if department and users do not match
 
         self.serial_number = str('{:4d}{:2d}{:2d}{:2d}{:2d}'.format(year, month, day, department.id, count))
@@ -110,19 +110,19 @@ class Reimbursement(models.Model):
             self.finalize_time = timezone.now()
             self.save()
 
-            record = Record.start(self.user, self.kind)
-            record = Record.edit({
+            requirement = Requirement.start(self.user, self.kind)
+            requirement = Requirement.edit({
                 'bank_code': self.bank_code,
                 'branch_code': self.branch_code,
                 'account': self.account,
                 'account_name': self.account_name
             })
-            record.save()
-            return record
+            requirement.save()
+            return requirement
         else:
-            raise Exception('Record is not rejected, cannot be copied: %s', self.id)
+            raise Exception('Requirement is not rejected, cannot be copied: %s', self.id)
 
-    # For chief of the department to confirm the record
+    # For chief of the department to confirm the requirement
     def confirm(self):
         self.department_confirm = True
         self.save()
@@ -164,7 +164,7 @@ class Reimbursement(models.Model):
             self.finalize_time = timezone.now()
             self.save()
         else:
-            raise Exception('Record cannot be closed since it was submitted: %s', self.serial_number)
+            raise Exception('Requirement cannot be closed since it was submitted: %s', self.serial_number)
 
     # For chief of the department of finance to set the pay date
     def set_pay_date(self, date):
@@ -185,4 +185,4 @@ class Reimbursement(models.Model):
         return self.expense_id
 
     def __str__(self):
-        return 'Record: Unique ID {0}, serial number {1}'.format(str(self.id),str(self.serial_number))
+        return 'Requirement: Unique ID {0}, serial number {1}'.format(str(self.id),str(self.serial_number))
