@@ -7,19 +7,16 @@ class Reimbursement(models.Model):
     REIMBURSE = 'R'
     KIND_CHOICES = (
         (ADVANCE, '預先請款'),
-        (REIMBURSE, '已有收據')
+        (REIMBURSE, '已有收據'),
+        (EXECUTE, '預先請款執行')
     )
 
     # State Choices
     EDITABLE = 'E'
     SUBMITTED = 'S'
-    REJECTED = 'R'
-    VOIDED = 'V'
-    RESTARTED = 'T'
     STATE_CHOICES = (
         (EDITABLE, '可編輯'),
         (SUBMITTED, '已送出'),
-        (VOIDED, '作廢')
     )
 
     # Progress Choices
@@ -37,49 +34,52 @@ class Reimbursement(models.Model):
         (BALANCE_OVERDUE, '餘款尚未繳回'),
         (NO_RECEIPT_AND_BALANCE_OVERDUE, '欠收據且餘款未繳回')
     )
+    # TODO: The state needs to be reformed; wait for Elantris
 
     user = models.ForeignKey(User)
     serial_number = models.CharField(max_length=12, blank=True)
 
     kind = models.CharField(max_length=1, choices=KIND_CHOICES)
-    state = models.CharField(max_length=1, choices=STATE_CHOICES, default=EDITABLE)
-    progress = models.CharField(max_length=1, choices=PROGRESS_CHOICES, blank=True)
 
-    bank_code = models.CharField(max_length=4)
-    branch_code = models.CharField(max_length=5)
-    account = models.CharField(max_length=20)
-    account_name = models.CharField(max_length=12)
+    editable = models.BooleanField(default=True)
+    progress = models.CharField(max_length=1, choices=PROGRESS_CHOICES, blank=True)
+    # state = models.CharField(max_length=1, choices=STATE_CHOICES, default=DRAFT)
+
+    bank_code = models.CharField(max_length=4, null=True)
+    branch_code = models.CharField(max_length=5, null=True)
+    account = models.CharField(max_length=20, null=True)
+    account_name = models.CharField(max_length=12, null=True)
 
     create_time = models.DateTimeField(auto_now_add=True)
-    edit_time = models.DateTimeField()
-    submit_time = models.DateTimeField()
-    finalize_time = models.DateTimeField()
+    edit_time = models.DateTimeField(null=True)
+    submit_time = models.DateTimeField(null=True)
+    finalize_time = models.DateTimeField(null=True)
 
-    department_confirm = models.BooleanField()
+    department_confirm = models.NullBooleanField(default=null)
 
-    staff_approve = models.BooleanField()
+    staff_approve = models.NullBooleanField(default=null)
     staff_reject_reason = models.TextField(blank=True)
 
-    chief_approve = models.BooleanField()
+    chief_approve = models.NullBooleanField()
     chief_reject_reason = models.TextField(blank=True)
 
-    pay_date = models.DateField(blank=True)
-    expense_id = models.CharField(max_length=10, blank=True)
+    pay_date = models.DateField(null=True)
+    expense_id = models.CharField(max_length=10, null=True)
 
     @classmethod
-    def start(cls, user, kind):
+    def open(cls, user, kind):
         record = cls(
             user=user,
             kind=kind,
-            edit_time=timezone.now()
         )
         return record
 
     def edit(self, edit_dict):
-        if (self.state is EDITABLE):
+        if (self.editable):
             for name, value in edit_dict:
                 setattr(self, name, value)
             self.edit_time = timezone.now()
+            self.save()
         else:
             raise Exception('This record is not editable: %s', self.id)
 
@@ -98,21 +98,15 @@ class Reimbursement(models.Model):
 
         self.serial_number = str('{:4d}{:2d}{:2d}{:2d}{:2d}'.format(year, month, day, department.id, count))
 
-        self.state = SUBMITTED
+        self.editable = False
         self.progress = IN_PROGRESS
 
         self.submit_time = now
         self.save()
         return self
 
-    def void(self):
-        self.state = VOIDED
-        self.finalize_time = timezone.now()
-        return self
-
-    def restart(self):
-        if (self.state is REJECTED):
-            self.state = RESTARTED
+    def cite(self):
+        if (self.progress is REJECT):
             self.finalize_time = timezone.now()
             self.save()
 
