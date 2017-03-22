@@ -1,5 +1,11 @@
 from django.db import models
 from django.utils import timezone
+from account.models import User
+
+class RequirementManager(models.Manager):
+    def open(self, user, kind):
+        requirement = self.create(d_staff=user, kind=kind)
+        return requirement
 
 class Requirement(models.Model):
     # Kind Choices
@@ -14,7 +20,7 @@ class Requirement(models.Model):
     # State Choices
     BLANK = 'B'
     DRAFT = 'D'
-    WAIT_CHIEF_VERIFY = 'V'
+    WAIT_D_CHIEF_VERIFY = 'V'
     WAIT_F_STAFF_VERIFY = 'S'
     WAIT_F_CHIEF_VERIFY = 'F'
     APPROVED = 'P'
@@ -22,7 +28,7 @@ class Requirement(models.Model):
     ABANDONED = 'B'
     STATE_CHOICES = (
         (DRAFT, '草稿'),
-        (WAIT_CHIEF_VERIFY, '等待部長確認'),
+        (WAIT_D_CHIEF_VERIFY, '等待部長確認'),
         (WAIT_F_STAFF_VERIFY, '等待財務部部員審核'),
         (WAIT_F_CHIEF_VERIFY, '等待財務部部長審核'),
         (APPROVED, '審核通過'),
@@ -46,7 +52,7 @@ class Requirement(models.Model):
         (NO_RECEIPT_AND_BALANCE_OVERDUE, '欠收據且餘款未繳回')
     )
 
-    user = models.ForeignKey(User)
+    d_staff = models.ForeignKey(User)
     serial_number = models.CharField(max_length=12, blank=True)
 
     kind = models.CharField(max_length=1, choices=KIND_CHOICES)
@@ -64,34 +70,30 @@ class Requirement(models.Model):
     submit_time = models.DateTimeField(null=True)
     finalize_time = models.DateTimeField(null=True)
 
-    department_confirm = models.NullBooleanField(default=null)
+    d_chief_verify = models.NullBooleanField(default=null)
 
-    staff_approve = models.NullBooleanField(default=null)
-    staff_reject_reason = models.TextField()
+    f_staff_verify = models.NullBooleanField(default=null)
+    f_staff_reject_reason = models.TextField()
 
-    chief_approve = models.NullBooleanField()
-    chief_reject_reason = models.TextField()
+    f_chief_verify = models.NullBooleanField()
+    f_chief_reject_reason = models.TextField()
 
     pay_date = models.DateField(null=True)
     expense_id = models.CharField(max_length=10)
 
-    @classmethod
-    def open(cls, user, kind):
-        requirement = cls(
-            user=user,
-            kind=kind,
-        )
-        requirement.save()
-        return requirement
+    objects = RequirementManager()
 
     def edit(self, edit_dict):
-        if (self.editable):
+        if (not isinstance(edit_dict ,dict)):
+            raise TypeError('Input is not a dictionary')
+        if (self.state is DRAFT):
             for name, value in edit_dict:
                 setattr(self, name, value)
             self.edit_time = timezone.now()
             self.save()
+            return self
         else:
-            raise Exception('This requirement is not editable: %s', self.id)
+            raise Exception('This requirement is not a draft: {}'.format(self.id))
 
     def submit(self):
         # id = yyyymmdd + dep_id[dd]+ no[dd]
@@ -101,10 +103,10 @@ class Requirement(models.Model):
         day = now.day
 
         # department_id
-        department = self.user.department
+        department = self.d_staff.department
         # count of the requirements
-        count = len(Requirement.objects.filter(user__department=department).filter(submit_time__date=now)) + 1
-        # TODO: catch exception if department and users do not match
+        count = len(Requirement.objects.filter(d_staff__department=department).filter(submit_time__date=now)) + 1
+        # TODO: catch exception if department and staff do not match
 
         self.serial_number = str('{:4d}{:2d}{:2d}{:2d}{:2d}'.format(year, month, day, department.id, count))
 
@@ -116,11 +118,8 @@ class Requirement(models.Model):
         return self
 
     def cite(self):
-        if (self.progress is REJECT):
-            self.finalize_time = timezone.now()
-            self.save()
-
-            requirement = Requirement.start(self.user, self.kind)
+        if (self.state is ABANDONED):
+            requirement = Requirement.objects.open(self.d_staff, self.kind)
             requirement = Requirement.edit({
                 'bank_code': self.bank_code,
                 'branch_code': self.branch_code,
@@ -130,51 +129,50 @@ class Requirement(models.Model):
             requirement.save()
             return requirement
         else:
-            raise Exception('Requirement is not rejected, cannot be copied: %s', self.id)
+            raise Exception('Requirement is not abandoned, cannot be copied: {}'.format(self.id))
 
-    # For chief of the department to confirm the requirement
-    def confirm(self):
-        self.department_confirm = True
+    def approve(self, user):
+        if ((self.state is WAIT_D_CHIEF_VERIFY) and (user.get_identity_display() is 'D_CHIEF')):
+            self.d_chief_verify = True
+            self.state = WAIT_F_STAFF_VERIFY
+        elif ((self.state is WAIT_F_STAFF_VERIFY) and (user.get_identity_display() is 'F_STAFF')):
+            self.f_staff_verify = True
+            self.state = WAIT_F_CHIEF_VERIFY
+        elif ((self.state is WAIT_F_CHIEF_VERIFY) and (user.get_identity_display() is 'F_CHIEF')):
+            self.f_chief_verify = True
+            if (self.kind is REIMBURSE):
+                self.progress = CLOSE_UP
+                self.state = COMPLETE
+                self.finalize_time = timezone.now()
+        else:
+            raise ValueError('Identity is not valid: {}'.format(identity))
         self.save()
         return self
 
-    # For staff of the dep. of finance to approve, reject and fill in reason
-    def approve(self, identity):
-        if (identity is '財務部部長'):
-            self.chief_approve = True
-            self.save()
-        elif (identity is '財務部部員'):
-            self.staff_review = True
-            self.save()
+    def reject(self, user, reason=''):
+        if ((self.state is WAIT_D_CHIEF_VERIFY) and (user.get_identity_display() is 'D_CHIEF')):
+            self.d_chief_verify = False
+        elif ((self.state is WAIT_F_STAFF_VERIFY) and (user.get_identity_display() is 'F_STAFF')):
+            self.f_staff_verify = False
+            self.staff_reject_reason = reason
+        elif ((self.state is WAIT_F_CHIEF_VERIFY) and (user.get_identity_display() is 'F_CHIEF')):
+            self.f_chief_verify = False
+            self.chief_reject_reason = reason
         else:
-            raise ValueError('Identity is not valid: %s', identity)
-        if (self.kind == REIMBURSE):
-            if (self.chief_approve and self.staff_review):
-                self.progress = CLOSE_UP
-                self.finalize_time = timezone.now()
-                self.save()
+            raise ValueError('Identity is not valid: {}'.format(user.get_identity_display()))
+        self.state = ABANDONED
+        self.progress = REJECT
+        self.finalize_time = timezone.now()
+        self.save()
         return self
 
-    def reject(self, identity, reason):
-        if (identity is '財務部部長'):
-            self.progress = REJECT
-            self.chief_approve = False
-            self.chief_reject_reason = reason
-            self.save()
-        elif (identity is '財務部部員'):
-            self.progress = REJECT
-            self.staff_approve = False
-            self.staff_reject_reason = reason
-            self.save()
-        else:
-            raise ValueError('Identity is not valid: %s', identity)
-
     def close(self):
-        if (self.state is not SUBMITTED):
+        if (self.state is DRAFT):
             self.finalize_time = timezone.now()
             self.save()
+            return self
         else:
-            raise Exception('Requirement cannot be closed since it was submitted: %s', self.serial_number)
+            raise Exception('Requirement cannot be closed since it was submitted: {}'.format(self.serial_number))
 
     # For chief of the department of finance to set the pay date
     def set_pay_date(self, date):
