@@ -21,6 +21,7 @@ class Receipt(models.Model):
             file=file
         )
         # TODO: Set file name
+        receipt.save()
         return receipt
 
     def submit(self):

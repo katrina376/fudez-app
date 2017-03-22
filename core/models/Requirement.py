@@ -12,11 +12,22 @@ class Requirement(models.Model):
     )
 
     # State Choices
-    EDITABLE = 'E'
-    SUBMITTED = 'S'
+    BLANK = 'B'
+    DRAFT = 'D'
+    WAIT_CHIEF_VERIFY = 'V'
+    WAIT_F_STAFF_VERIFY = 'S'
+    WAIT_F_CHIEF_VERIFY = 'F'
+    APPROVED = 'P'
+    COMPLETE = 'C'
+    ABANDONED = 'B'
     STATE_CHOICES = (
-        (EDITABLE, '可編輯'),
-        (SUBMITTED, '已送出'),
+        (DRAFT, '草稿'),
+        (WAIT_CHIEF_VERIFY, '等待部長確認'),
+        (WAIT_F_STAFF_VERIFY, '等待財務部部員審核'),
+        (WAIT_F_CHIEF_VERIFY, '等待財務部部長審核'),
+        (APPROVED, '審核通過'),
+        (COMPLETE, '請款完成'),
+        (ABANDONED, '請款失敗')
     )
 
     # Progress Choices
@@ -34,16 +45,14 @@ class Requirement(models.Model):
         (BALANCE_OVERDUE, '餘款尚未繳回'),
         (NO_RECEIPT_AND_BALANCE_OVERDUE, '欠收據且餘款未繳回')
     )
-    # TODO: The state needs to be reformed; wait for Elantris
 
     user = models.ForeignKey(User)
     serial_number = models.CharField(max_length=12, blank=True)
 
     kind = models.CharField(max_length=1, choices=KIND_CHOICES)
 
-    editable = models.BooleanField(default=True)
-    progress = models.CharField(max_length=1, choices=PROGRESS_CHOICES, blank=True)
-    # state = models.CharField(max_length=1, choices=STATE_CHOICES, default=DRAFT)
+    state = models.CharField(max_length=1, choices=STATE_CHOICES, default=DRAFT)
+    progress = models.CharField(max_length=1, choices=PROGRESS_CHOICES)
 
     bank_code = models.CharField(max_length=4, null=True)
     branch_code = models.CharField(max_length=5, null=True)
@@ -58,13 +67,13 @@ class Requirement(models.Model):
     department_confirm = models.NullBooleanField(default=null)
 
     staff_approve = models.NullBooleanField(default=null)
-    staff_reject_reason = models.TextField(blank=True)
+    staff_reject_reason = models.TextField()
 
     chief_approve = models.NullBooleanField()
-    chief_reject_reason = models.TextField(blank=True)
+    chief_reject_reason = models.TextField()
 
     pay_date = models.DateField(null=True)
-    expense_id = models.CharField(max_length=10, null=True)
+    expense_id = models.CharField(max_length=10)
 
     @classmethod
     def open(cls, user, kind):
@@ -72,6 +81,7 @@ class Requirement(models.Model):
             user=user,
             kind=kind,
         )
+        requirement.save()
         return requirement
 
     def edit(self, edit_dict):
@@ -98,7 +108,7 @@ class Requirement(models.Model):
 
         self.serial_number = str('{:4d}{:2d}{:2d}{:2d}{:2d}'.format(year, month, day, department.id, count))
 
-        self.editable = False
+        self.state = WAIT_CHIEF_VERIFY
         self.progress = IN_PROGRESS
 
         self.submit_time = now
