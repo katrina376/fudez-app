@@ -8,7 +8,7 @@ class Receipt(models.Model):
     # TODO: How to merge with the advances?
 
     amount = models.PositiveIntegerField()
-    memo = models.TextField(blank=True)
+    memo = models.TextField()
     file = models.FileField(upload_to='uploads/draft/', max_length=100)
 
     @classmethod
