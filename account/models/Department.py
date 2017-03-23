@@ -1,5 +1,4 @@
 from django.db import models
-from account.models import User
 
 class DepartmentManager(models.Manager):
     def add(self, name, id):
@@ -17,10 +16,13 @@ class DepartmentManager(models.Manager):
 
 class Department(models.Model):
     name = models.CharField(max_length=16)
-    fa = models.ForeignKey(User, null=True)
+    fa = models.ForeignKey('account.models.User', null=True)
 
     objects = DepartmentManager()
 
     def set_fa(self, fa):
         self.fa = fa
         self.save()
+
+    def __str__(self):
+        return self.name

@@ -1,14 +1,20 @@
 from django.db import models
-from core.models import Requirement
 
 class AdvanceManager(models.Manager):
     def open(item, requirement, amount, memo, activity_date):
-        advance = self.create(item, requirement, amount, memo, activity_date)
+        advance = self.create(
+            item=item,
+            requirement=requirment,
+            amount=amount,
+            memo=memo,
+            activity_date=activity_date
+        )
         return advance
 
 class Advance(models.Model):
-    item = models.ForeignKey(Item)
-    requirement = models.ForeignKey(Requirement)
+    item = models.ForeignKey('.models.Item')
+    # TODO: Finish the budget models
+    requirement = models.ForeignKey('core.models.Requirement')
 
     amount = models.PositiveIntegerField()
     memo = models.TextField()
@@ -17,7 +23,7 @@ class Advance(models.Model):
 
     balanced = models.NullBooleanField(default=null)
 
-    objects = AdvanceManager
+    objects = AdvanceManager()
 
     def balance(self):
         if (self.balanced is False)

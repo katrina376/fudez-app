@@ -1,13 +1,12 @@
 from django.contrib.auth.models import AbstractBaseUser, AbstractBaseUserManager
 from django.db import models
-from account.models import Department
 
 class UserManager(AbstractBaseUserManager):
-    def new(self, username, password, identity, department_id):
+    def new(self, username, password, identity, department):
         user = self.model(
             username=username,
             identity=identity,
-            department=Department.models.get(id=department_id)
+            department=department
         )
         # TODO: What if department_id cannot match department?
         user.set_password(password)
@@ -32,7 +31,7 @@ class User(AbstractBaseUser):
 
     username = models.CharField(max_length=16, unique=True)
 
-    department = models.ForeignKey(Department)
+    department = models.ForeignKey('account.models.Department')
     identity = models.CharField(max_length=1, choices=IDENTITY_CHOICES)
 
     create_date = models.DateField(auto_now_add=True)
@@ -53,3 +52,6 @@ class User(AbstractBaseUser):
     def set_department(self, department):
         self.department = department
         return self
+
+    def __str__(self):
+        return self.username

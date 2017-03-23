@@ -1,19 +1,8 @@
 from django.db import models
-from core.models import Requirement
 
-class Receipt(models.Model):
-    item = models.ForeignKey(Item)
-    Requirement = models.ForeignKey(Requirement)
-
-    # TODO: How to merge with the advances?
-
-    amount = models.PositiveIntegerField()
-    memo = models.TextField()
-    file = models.FileField(upload_to='uploads/draft/', max_length=100)
-
-    @classmethod
-    def upload(cls, item, requirement, ammout, memo, file):
-        receipt = cls(
+class ReceiptManager(models.Manager):
+    def upload(self, item, requirement, ammout, memo, file):
+        receipt = self.create(
             item=item,
             requirement=requirement,
             ammout=ammout,
@@ -21,8 +10,20 @@ class Receipt(models.Model):
             file=file
         )
         # TODO: Set file name
-        receipt.save()
         return receipt
+
+class Receipt(models.Model):
+    item = models.ForeignKey('.models.Item')
+    # TODO: Finish the budget models
+    Requirement = models.ForeignKey('core.models.Requirement')
+
+    # TODO: How to merge with the advances?
+
+    amount = models.PositiveIntegerField()
+    memo = models.TextField()
+    file = models.FileField(upload_to='uploads/draft/', max_length=100)
+
+    objects = ReceiptManager()
 
     def submit(self):
         # TODO: Set file name => uploads/{serial_number}/{self.id}

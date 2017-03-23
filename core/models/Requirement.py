@@ -53,14 +53,13 @@ class Requirement(models.Model):
     )
 
     # Get User Identity Choices
-    IDENTITY_CHOICES = User._meta.get_field('identity').choice
-    # TODO: How to map the name of identity to symbol?
+    # TODO: Is it okay to get _meta from account.models.User?
     D_STAFF = 'S'
     D_CHIEF = 'C'
     F_STAFF = 'A'
     F_CHEIF = 'F'
 
-    d_staff = models.ForeignKey(User)
+    d_staff = models.ForeignKey('account.models.User')
     serial_number = models.CharField(max_length=12, blank=True)
 
     kind = models.CharField(max_length=1, choices=KIND_CHOICES)
