@@ -52,6 +52,14 @@ class Requirement(models.Model):
         (NO_RECEIPT_AND_BALANCE_OVERDUE, '欠收據且餘款未繳回')
     )
 
+    # Get User Identity Choices
+    IDENTITY_CHOICES = User._meta.get_field('identity').choice
+    # TODO: How to map the name of identity to symbol?
+    D_STAFF = 'S'
+    D_CHIEF = 'C'
+    F_STAFF = 'A'
+    F_CHEIF = 'F'
+
     d_staff = models.ForeignKey(User)
     serial_number = models.CharField(max_length=12, blank=True)
 
@@ -75,7 +83,7 @@ class Requirement(models.Model):
     f_staff_verify = models.NullBooleanField(default=null)
     f_staff_reject_reason = models.TextField()
 
-    f_chief_verify = models.NullBooleanField()
+    f_chief_verify = models.NullBooleanField(default=null)
     f_chief_reject_reason = models.TextField()
 
     pay_date = models.DateField(null=True)
@@ -102,13 +110,13 @@ class Requirement(models.Model):
         month = now.month
         day = now.day
 
-        # department_id
-        department = self.d_staff.department
+        # department id
+        dep = self.d_staff.department
         # count of the requirements
-        count = len(Requirement.objects.filter(d_staff__department=department).filter(submit_time__date=now)) + 1
+        count = len(Requirement.objects.filter(d_staff__department=dep).filter(submit_time__date=now)) + 1
         # TODO: catch exception if department and staff do not match
 
-        self.serial_number = str('{:4d}{:2d}{:2d}{:2d}{:2d}'.format(year, month, day, department.id, count))
+        self.serial_number = str('{:4d}{:2d}{:2d}{:2d}{:2d}'.format(year, month, day, dep.id, count))
 
         self.state = WAIT_CHIEF_VERIFY
         self.progress = IN_PROGRESS
@@ -129,16 +137,16 @@ class Requirement(models.Model):
             requirement.save()
             return requirement
         else:
-            raise Exception('Requirement is not abandoned, cannot be copied: {}'.format(self.id))
+            raise Exception('Requirement is not abandoned, thus cannot be copied: {}'.format(self.id))
 
     def approve(self, user):
-        if ((self.state is WAIT_D_CHIEF_VERIFY) and (user.get_identity_display() is 'D_CHIEF')):
+        if ((self.state is WAIT_D_CHIEF_VERIFY) and (user.get_identity_display() is D_CHIEF)):
             self.d_chief_verify = True
             self.state = WAIT_F_STAFF_VERIFY
-        elif ((self.state is WAIT_F_STAFF_VERIFY) and (user.get_identity_display() is 'F_STAFF')):
+        elif ((self.state is WAIT_F_STAFF_VERIFY) and (user.get_identity_display() is F_STAFF)):
             self.f_staff_verify = True
             self.state = WAIT_F_CHIEF_VERIFY
-        elif ((self.state is WAIT_F_CHIEF_VERIFY) and (user.get_identity_display() is 'F_CHIEF')):
+        elif ((self.state is WAIT_F_CHIEF_VERIFY) and (user.get_identity_display() is F_CHIEF)):
             self.f_chief_verify = True
             if (self.kind is REIMBURSE):
                 self.progress = CLOSE_UP
@@ -150,12 +158,12 @@ class Requirement(models.Model):
         return self
 
     def reject(self, user, reason=''):
-        if ((self.state is WAIT_D_CHIEF_VERIFY) and (user.get_identity_display() is 'D_CHIEF')):
+        if ((self.state is WAIT_D_CHIEF_VERIFY) and (user.get_identity_display() is D_CHIEF)):
             self.d_chief_verify = False
-        elif ((self.state is WAIT_F_STAFF_VERIFY) and (user.get_identity_display() is 'F_STAFF')):
+        elif ((self.state is WAIT_F_STAFF_VERIFY) and (user.get_identity_display() is F_STAFF)):
             self.f_staff_verify = False
             self.staff_reject_reason = reason
-        elif ((self.state is WAIT_F_CHIEF_VERIFY) and (user.get_identity_display() is 'F_CHIEF')):
+        elif ((self.state is WAIT_F_CHIEF_VERIFY) and (user.get_identity_display() is F_CHIEF)):
             self.f_chief_verify = False
             self.chief_reject_reason = reason
         else:
