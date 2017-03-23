@@ -15,7 +15,7 @@ class ReceiptManager(models.Manager):
 class Receipt(models.Model):
     item = models.ForeignKey('.models.Item')
     # TODO: Finish the budget models
-    Requirement = models.ForeignKey('core.models.Requirement')
+    requirement = models.ForeignKey('core.models.Requirement')
 
     # TODO: How to merge with the advances?
 
