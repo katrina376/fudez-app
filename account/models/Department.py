@@ -2,7 +2,7 @@ from django.db import models
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 from account.models import UnlockRecord
-from core.models import Requirement, Advance
+from core.models import Advance
 
 def validate_id(value):
     if Department.objects.filter(id=value).exists():
