@@ -1,8 +1,7 @@
 from django.db import models
-from core.models import Receipt
 
 class Item(models.Model):
-    subject = models.ForeignKey('budget.models.Subject')
+    subject = models.ForeignKey('budget.Subject')
 
     name = models.CharField(max_length=32)
     estimated_amount = models.PositiveIntegerField(null=True)
@@ -11,7 +10,7 @@ class Item(models.Model):
     @property
     def actual_amount(self):
         total = 0
-        receipts = Receipts.objects.filter(item=self)
+        receipts = self.receipt_set.all()
         for r in receipts:
             total += r.amount
         return total

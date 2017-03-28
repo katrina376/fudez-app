@@ -1,7 +1,6 @@
 from django.db import models
 from django.core.exceptions import ValidationError
 from django.utils import timezone
-from account.models import UnlockRecord
 from core.models import Advance
 
 def validate_id(value):
@@ -18,15 +17,15 @@ class Department(models.Model):
     LEGISLATIVE = 'L'
     JUDICIAL = 'J'
     KIND_CHOICES = (
-        (EXECUTIVE, '行政部門')
-        (LEGISLATIVE, '立法部門')
+        (EXECUTIVE, '行政部門'),
+        (LEGISLATIVE, '立法部門'),
         (JUDICIAL, '司法部門')
     )
 
-    id = models.IntegerField(primary_key=True, validator=[validate_id])
+    id = models.IntegerField(primary_key=True, validators=[validate_id])
     name = models.CharField(max_length=16)
     kind = models.CharField(max_length=1, choices=KIND_CHOICES)
-    fa = models.ForeignKey('account.models.User', null=True)
+    fa = models.ForeignKey('account.User', null=True)
 
     @property
     def is_locked(self):
@@ -41,7 +40,8 @@ class Department(models.Model):
 
         # Check UnlockRecord
         now = timezone.now()
-        if UnlockRecord.objects.filter(department=self, start_time__lt=now, end_time__gt=now).exists():
+        # TODO: WHAT?????
+        if self.unlock_record_set.filter(start_time__lt=now, end_time__gt=now).exists():
             res = False
 
         return res

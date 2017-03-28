@@ -2,39 +2,36 @@ from django.db import models
 from django.utils import timezone
 from account.models import User
 
-class RequirementManager(models.Manager):
-    def open(self, user, kind):
-        requirement = self.create(d_staff=user, kind=kind)
-        return requirement
-
 class Requirement(models.Model):
     # Kind Choices
     ADVANCE = 'A'
     REIMBURSE = 'R'
     KIND_CHOICES = (
         (ADVANCE, '預先請款'),
-        (REIMBURSE, '已有收據'),
-        (EXECUTE, '預先請款執行')
+        (REIMBURSE, '已有收據')
     )
 
     # State Choices
     BLANK = 'B'
     DRAFT = 'D'
     WAIT_D_CHIEF_VERIFY = 'V'
+    WAIT_PRESIDENT_VERIFY = 'P'
     WAIT_F_STAFF_VERIFY = 'S'
     WAIT_F_CHIEF_VERIFY = 'F'
-    APPROVED = 'P'
+    APPROVED = 'A'
     COMPLETE = 'C'
     ABANDONED = 'B'
     STATE_CHOICES = (
         (DRAFT, '草稿'),
         (WAIT_D_CHIEF_VERIFY, '等待部長確認'),
+        (WAIT_PRESIDENT_VERIFY, '等待會長確認'),
         (WAIT_F_STAFF_VERIFY, '等待財務部部員審核'),
         (WAIT_F_CHIEF_VERIFY, '等待財務部部長審核'),
         (APPROVED, '審核通過'),
         (COMPLETE, '請款完成'),
         (ABANDONED, '請款失敗')
     )
+    # TODO: How to decide whether it should be approved by the president or not?
 
     # Progress Choices
     CLOSE_UP = 'C'
@@ -52,20 +49,14 @@ class Requirement(models.Model):
         (NO_RECEIPT_AND_BALANCE_OVERDUE, '欠收據且餘款未繳回')
     )
 
-    # Get User Identity Choices
-    # TODO: Is it okay to get _meta from account.models.User?
-    D_STAFF = 'S'
-    D_CHIEF = 'C'
-    F_STAFF = 'A'
-    F_CHEIF = 'F'
+    # TODO: How to recognize the kind of user?
 
-    d_staff = models.ForeignKey('account.models.User')
-    serial_number = models.CharField(max_length=12, blank=True)
+    d_staff = models.ForeignKey('account.User')
+    serial_number = models.CharField(max_length=12)
 
     kind = models.CharField(max_length=1, choices=KIND_CHOICES)
 
     state = models.CharField(max_length=1, choices=STATE_CHOICES, default=DRAFT)
-    progress = models.CharField(max_length=1, choices=PROGRESS_CHOICES)
 
     bank_code = models.CharField(max_length=4, null=True)
     branch_code = models.CharField(max_length=5, null=True)
@@ -77,23 +68,47 @@ class Requirement(models.Model):
     submit_time = models.DateTimeField(null=True)
     finalize_time = models.DateTimeField(null=True)
 
-    d_chief_verify = models.NullBooleanField(default=null)
+    d_chief_verify = models.NullBooleanField(default=None)
 
-    f_staff_verify = models.NullBooleanField(default=null)
+    president_verify = models.NullBooleanField(default=None)
+
+    f_staff_verify = models.NullBooleanField(default=None)
     f_staff_reject_reason = models.TextField()
 
-    f_chief_verify = models.NullBooleanField(default=null)
+    f_chief_verify = models.NullBooleanField(default=None)
     f_chief_reject_reason = models.TextField()
 
     pay_date = models.DateField(null=True)
-    expense_id = models.CharField(max_length=10)
+    expense = models.ForeignKey('core.ExpenseRecord', null=True)
 
-    objects = RequirementManager()
+    @property
+    def stage(self):
+        if self.state is DRAFT:
+            return None
+        else:
+            if self.kind is REIMBURSE:
+                if self.state is COMPLETE:
+                    return CLOSE_UP
+                elif self.state is ABANDONED:
+                    return REJECT
+                else:
+                    return IN_PROGRESS
+            else:
+                for a in self.advance_set.all():
+                    if a.is_balanced and a.receipt_set.exists():
+                        return IN_PROGRESS
+                    elif a.is_balanced:
+                        return NO_RECEIPT
+                    elif receipts.exists():
+                        BALANCE_OVERDUE
+                    else:
+                        return NO_RECEIPT_AND_BALANCE_OVERDUE
+                return None
 
     def edit(self, edit_dict):
-        if (not isinstance(edit_dict ,dict)):
+        if not isinstance(edit_dict ,dict):
             raise TypeError('Input is not a dictionary')
-        if (self.state is DRAFT):
+        if self.state is DRAFT:
             for name, value in edit_dict:
                 setattr(self, name, value)
             self.edit_time = timezone.now()
@@ -109,11 +124,10 @@ class Requirement(models.Model):
         month = now.month
         day = now.day
 
-        # department id
-        dep = self.d_staff.department
+        # department
+        dep = d_staff.department
         # count of the requirements
-        count = len(Requirement.objects.filter(d_staff__department=dep).filter(submit_time__date=now)) + 1
-        # TODO: catch exception if department and staff do not match
+        count = Requirement.objects.filter(d_staff__department=dep, submit_time__date=now).count()
 
         self.serial_number = str('{:4d}{:2d}{:2d}{:2d}{:2d}'.format(year, month, day, dep.id, count))
 
@@ -125,9 +139,9 @@ class Requirement(models.Model):
         return self
 
     def cite(self):
-        if (self.state is ABANDONED):
-            requirement = Requirement.objects.open(self.d_staff, self.kind)
-            requirement = Requirement.edit({
+        if self.state is ABANDONED:
+            requirement = Requirement.objects.create(d_staff=self.d_staff, kind=self.kind)
+            requirement.edit({
                 'bank_code': self.bank_code,
                 'branch_code': self.branch_code,
                 'account': self.account,
@@ -139,13 +153,20 @@ class Requirement(models.Model):
             raise Exception('Requirement is not abandoned, thus cannot be copied: {}'.format(self.id))
 
     def approve(self, user):
-        if ((self.state is WAIT_D_CHIEF_VERIFY) and (user.get_identity_display() is D_CHIEF)):
+        if (self.state is WAIT_D_CHIEF_VERIFY) and (user.get_kind_display() is User.D_CHIEF):
             self.d_chief_verify = True
+            if ... :
+                # TODO: How to know whether president should verify or not?
+                self.state = WAIT_F_STAFF_VERIFY
+            else:
+                self.state = WAIT_PRESIDENT_VERIFY
+        elif (self.state is WAIT_PRESIDENT_VERIFY) and (user.get_kind_display() is User.PRESIDENT):
+            self.president_verify = True
             self.state = WAIT_F_STAFF_VERIFY
-        elif ((self.state is WAIT_F_STAFF_VERIFY) and (user.get_identity_display() is F_STAFF)):
+        elif (self.state is WAIT_F_STAFF_VERIFY) and (user.get_kind_display() is User.F_STAFF):
             self.f_staff_verify = True
             self.state = WAIT_F_CHIEF_VERIFY
-        elif ((self.state is WAIT_F_CHIEF_VERIFY) and (user.get_identity_display() is F_CHIEF)):
+        elif (self.state is WAIT_F_CHIEF_VERIFY) and (user.get_kind_display() is User.F_CHIEF):
             self.f_chief_verify = True
             if (self.kind is REIMBURSE):
                 self.progress = CLOSE_UP
@@ -157,12 +178,12 @@ class Requirement(models.Model):
         return self
 
     def reject(self, user, reason=''):
-        if ((self.state is WAIT_D_CHIEF_VERIFY) and (user.get_identity_display() is D_CHIEF)):
+        if (self.state is WAIT_D_CHIEF_VERIFY) and (user.get_identity_display() is D_CHIEF):
             self.d_chief_verify = False
-        elif ((self.state is WAIT_F_STAFF_VERIFY) and (user.get_identity_display() is F_STAFF)):
+        elif (self.state is WAIT_F_STAFF_VERIFY) and (user.get_identity_display() is F_STAFF):
             self.f_staff_verify = False
             self.staff_reject_reason = reason
-        elif ((self.state is WAIT_F_CHIEF_VERIFY) and (user.get_identity_display() is F_CHIEF)):
+        elif (self.state is WAIT_F_CHIEF_VERIFY) and (user.get_identity_display() is F_CHIEF):
             self.f_chief_verify = False
             self.chief_reject_reason = reason
         else:
@@ -180,24 +201,6 @@ class Requirement(models.Model):
             return self
         else:
             raise Exception('Requirement cannot be closed since it was submitted: {}'.format(self.serial_number))
-
-    # For chief of the department of finance to set the pay date
-    def set_pay_date(self, date):
-        self.pay_date = date
-        self.save()
-        return self
-
-    def get_pay_date(self):
-        return self.pay_date
-
-    # For chief of the department of finance to set the expense id
-    def set_expense_id(self, expense_id):
-        self.expense_id = expense_id
-        self.save()
-        return self
-
-    def get_expense_id(self):
-        return self.expense_id
 
     def __str__(self):
         return 'Requirement: Unique ID {0}, serial number {1}'.format(str(self.id),str(self.serial_number))
