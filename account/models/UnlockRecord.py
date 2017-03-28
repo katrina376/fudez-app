@@ -5,3 +5,6 @@ class UnlockRecord(models.Model):
     start_time = DateTimeField()
     end_time = DateTimeField()
     reason = TextField()
+
+    def __str__(self):
+        return '{} {}-{}'.format(self.department, start_time, end_time)
