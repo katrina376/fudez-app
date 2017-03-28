@@ -40,8 +40,7 @@ class Department(models.Model):
 
         # Check UnlockRecord
         now = timezone.now()
-        # TODO: WHAT?????
-        if self.unlock_record_set.filter(start_time__lt=now, end_time__gt=now).exists():
+        if self.unlockrecord_set.filter(start_time__lt=now, end_time__gt=now).exists():
             res = False
 
         return res
