@@ -31,7 +31,6 @@ class Requirement(models.Model):
         (COMPLETE, '請款完成'),
         (ABANDONED, '請款失敗')
     )
-    # TODO: How to decide whether it should be approved by the president or not?
 
     # Progress Choices
     CLOSE_UP = 'C'
@@ -58,10 +57,10 @@ class Requirement(models.Model):
 
     state = models.CharField(max_length=1, choices=STATE_CHOICES, default=DRAFT)
 
-    bank_code = models.CharField(max_length=4, null=True)
-    branch_code = models.CharField(max_length=5, null=True)
-    account = models.CharField(max_length=20, null=True)
-    account_name = models.CharField(max_length=12, null=True)
+    bank_code = models.CharField(max_length=4)
+    branch_code = models.CharField(max_length=5)
+    account = models.CharField(max_length=20)
+    account_name = models.CharField(max_length=12)
 
     create_time = models.DateTimeField(auto_now_add=True)
     edit_time = models.DateTimeField(null=True)
@@ -69,13 +68,17 @@ class Requirement(models.Model):
     finalize_time = models.DateTimeField(null=True)
 
     d_chief_verify = models.NullBooleanField(default=None)
+    d_cheif_verify_time = models.DateTimeField(null=True)
 
     president_verify = models.NullBooleanField(default=None)
+    president_verify_time = models.DateTimeField(null=True)
 
     f_staff_verify = models.NullBooleanField(default=None)
+    f_staff_verify_time = models.DateTimeField(null=True)
     f_staff_reject_reason = models.TextField()
 
     f_chief_verify = models.NullBooleanField(default=None)
+    f_cheif_verify_time = models.DateTimeField(null=True)
     f_chief_reject_reason = models.TextField()
 
     pay_date = models.DateField(null=True)
@@ -83,13 +86,13 @@ class Requirement(models.Model):
 
     @property
     def stage(self):
-        if self.state is DRAFT:
+        if self.state == DRAFT:
             return None
         else:
-            if self.kind is REIMBURSE:
-                if self.state is COMPLETE:
+            if self.kind == REIMBURSE:
+                if self.state == COMPLETE:
                     return CLOSE_UP
-                elif self.state is ABANDONED:
+                elif self.state == ABANDONED:
                     return REJECT
                 else:
                     return IN_PROGRESS
@@ -105,10 +108,18 @@ class Requirement(models.Model):
                         return NO_RECEIPT_AND_BALANCE_OVERDUE
                 return None
 
+    @property
+    def need_president_verify(self):
+        # TODO: Set the condition for president to verify
+        if ...:
+            return True
+        else:
+            return False
+
     def edit(self, edit_dict):
         if not isinstance(edit_dict ,dict):
             raise TypeError('Input is not a dictionary')
-        if self.state is DRAFT:
+        if self.state == DRAFT:
             for name, value in edit_dict:
                 setattr(self, name, value)
             self.edit_time = timezone.now()
@@ -131,15 +142,14 @@ class Requirement(models.Model):
 
         self.serial_number = str('{:4d}{:2d}{:2d}{:2d}{:2d}'.format(year, month, day, dep.id, count))
 
-        self.state = WAIT_CHIEF_VERIFY
-        self.progress = IN_PROGRESS
+        self.state = WAIT_D_CHIEF_VERIFY
 
         self.submit_time = now
         self.save()
         return self
 
     def cite(self):
-        if self.state is ABANDONED:
+        if self.state == ABANDONED:
             requirement = Requirement.objects.create(d_staff=self.d_staff, kind=self.kind)
             requirement.edit({
                 'bank_code': self.bank_code,
@@ -153,23 +163,25 @@ class Requirement(models.Model):
             raise Exception('Requirement is not abandoned, thus cannot be copied: {}'.format(self.id))
 
     def approve(self, user):
-        if (self.state is WAIT_D_CHIEF_VERIFY) and (user.get_kind_display() is User.D_CHIEF):
+        if (self.state == WAIT_D_CHIEF_VERIFY) and (user.kind == User.D_CHIEF):
             self.d_chief_verify = True
-            if ... :
-                # TODO: How to know whether president should verify or not?
-                self.state = WAIT_F_STAFF_VERIFY
-            else:
+            self.d_chief_verify_time = timezone.now()
+            if self.need_president_verify:
                 self.state = WAIT_PRESIDENT_VERIFY
-        elif (self.state is WAIT_PRESIDENT_VERIFY) and (user.get_kind_display() is User.PRESIDENT):
+            else:
+                self.state = WAIT_F_STAFF_VERIFY
+        elif (self.state == WAIT_PRESIDENT_VERIFY) and (user.kind == User.PRESIDENT):
             self.president_verify = True
+            self.president_verify_time = timezone.now()
             self.state = WAIT_F_STAFF_VERIFY
-        elif (self.state is WAIT_F_STAFF_VERIFY) and (user.get_kind_display() is User.F_STAFF):
+        elif (self.state == WAIT_F_STAFF_VERIFY) and (user.kind == User.F_STAFF):
             self.f_staff_verify = True
+            self.f_staff_verify_time = timezone.now()
             self.state = WAIT_F_CHIEF_VERIFY
-        elif (self.state is WAIT_F_CHIEF_VERIFY) and (user.get_kind_display() is User.F_CHIEF):
+        elif (self.state == WAIT_F_CHIEF_VERIFY) and (user.kind == User.F_CHIEF):
             self.f_chief_verify = True
-            if (self.kind is REIMBURSE):
-                self.progress = CLOSE_UP
+            self.f_chief_verify_time = timezone.now()
+            if self.kind == REIMBURSE:
                 self.state = COMPLETE
                 self.finalize_time = timezone.now()
         else:
@@ -178,24 +190,29 @@ class Requirement(models.Model):
         return self
 
     def reject(self, user, reason=''):
-        if (self.state is WAIT_D_CHIEF_VERIFY) and (user.get_identity_display() is D_CHIEF):
+        if (self.state == WAIT_D_CHIEF_VERIFY) and (user.kind == User.D_CHIEF):
             self.d_chief_verify = False
-        elif (self.state is WAIT_F_STAFF_VERIFY) and (user.get_identity_display() is F_STAFF):
+            self.d_chief_verify_time = timezone.now()
+        elif (self.state == WAIT_PRESIDENT_VERIFY) and (user.kind == User.PRESIDENT):
+            self.president_verify = False
+            self.president_verify_time = timezone.now()
+        elif (self.state == WAIT_F_STAFF_VERIFY) and (user.kind == User.F_STAFF):
             self.f_staff_verify = False
-            self.staff_reject_reason = reason
-        elif (self.state is WAIT_F_CHIEF_VERIFY) and (user.get_identity_display() is F_CHIEF):
+            self.f_staff_verify_time = timezone.now()
+            self.f_staff_reject_reason = reason
+        elif (self.state == WAIT_F_CHIEF_VERIFY) and (user.kind == User.F_CHIEF):
             self.f_chief_verify = False
-            self.chief_reject_reason = reason
+            self.f_chief_verify_time = timezone.now()
+            self.f_chief_reject_reason = reason
         else:
             raise ValueError('Identity is not valid: {}'.format(user.get_identity_display()))
         self.state = ABANDONED
-        self.progress = REJECT
         self.finalize_time = timezone.now()
         self.save()
         return self
 
     def close(self):
-        if (self.state is DRAFT):
+        if (self.state == DRAFT):
             self.finalize_time = timezone.now()
             self.save()
             return self
