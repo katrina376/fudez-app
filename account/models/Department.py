@@ -25,7 +25,7 @@ class Department(models.Model):
     id = models.IntegerField(primary_key=True, validators=[validate_id])
     name = models.CharField(max_length=16)
     kind = models.CharField(max_length=1, choices=KIND_CHOICES)
-    fa = models.ForeignKey('account.User', null=True)
+    fa = models.ForeignKey('account.User', null=True, related_name='+',)
 
     @property
     def is_locked(self):
