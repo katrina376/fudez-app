@@ -9,7 +9,7 @@ class Subject(models.Model):
         (EXPENSE, '期出')
     )
 
-    book = models.ForeignKey('budget.Book')
+    project = models.ForeignKey('budget.Project')
     name = models.CharField(max_length=16)
     kind = models.CharField(max_length=1, choices=KIND_CHOICES)
 

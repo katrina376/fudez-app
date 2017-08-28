@@ -17,17 +17,17 @@ class User(AbstractBaseUser):
     REQUIRED_FIELDS = ['name', 'email', 'department', 'kind']
 
     # Kind Choices
-    D_STAFF = 'S'
-    D_CHIEF = 'C'
-    F_STAFF = 'A'
-    F_CHEIF = 'F'
+    DEPARTMENT = 'D'
+    STAFF = 'S'
+    CHEIF = 'C'
     PRESIDENT = 'P'
+    AUDIT = 'A'
     KIND_CHOICES = (
-        (D_STAFF, '請款部員'),
-        (D_CHIEF, '部長'),
-        (F_STAFF, '財務部部員'),
-        (F_CHEIF, '財務部部長'),
-        (PRESIDENT, '會長')
+        (DEPARTMENT, '一般單位請款帳號'),
+        (STAFF, '財務部部員'),
+        (CHEIF, '財務部部長'),
+        (PRESIDENT, '會長、議長、院務會議'),
+        (AUDIT, '審查')
     )
 
     username = models.CharField(max_length=16, primary_key=True)
@@ -38,7 +38,7 @@ class User(AbstractBaseUser):
     kind = models.CharField(max_length=1, choices=KIND_CHOICES)
 
     create_time = models.DateTimeField(auto_now_add=True)
-    last_modify_time = models.DateTimeField(auto_now=True)
+    edit_time = models.DateTimeField(auto_now=True)
     is_active = models.BooleanField(default=True)
 
     objects = UserManager()

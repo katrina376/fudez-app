@@ -6,13 +6,21 @@ class Item(models.Model):
     name = models.CharField(max_length=32)
     estimated_amount = models.PositiveIntegerField(null=True)
     memo = models.TextField()
+    addition = models.TextField()
 
     @property
     def actual_amount(self):
         total = 0
-        receipts = self.receipt_set.all()
-        for r in receipts:
-            total += r.amount
+        funds = self.fund_set.all()
+        for f in funds:
+            total += f.amount
         return total
 
-    # TODO: Combine all receipts' memo
+    @property
+    def efficiency(self):
+        return float(self.actual_amount / self.estimated_amount) * 100
+
+    @property
+    def report(self):
+        funds = self.fund_set.all()
+        return '\n'.join(funds)
