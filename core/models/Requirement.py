@@ -1,6 +1,46 @@
+import os
+
+from django.core.exceptions import ObjectDoesNotExist
 from django.db import models
 from django.utils import timezone
+
 from account.models import User
+
+def file_path(instance, filename):
+    path = 'draft/'
+    name = '{}_{}'.format(timezone.now(), filename)
+    return os.path.join(path, name)
+
+class RequirementManager(models.Manager):
+    # General: applicant, activity_date, memo
+    # Regular: bank_name, bank_code, branch_name, account, account_name, receipt, require_president
+    # Advance: bank_name, bank_code, branch_name, account, account_name
+    # Reimburse after advance: advance, receipt, require_president
+    def _add_bank_info(instance, bank_name, bank_code, branch_name, account, account_name):
+
+    def _attach_receipt(instance, receipt, require_president):
+
+    def create_requirement(self, applicant, kind, activity_date, memo,
+                           advance=None,
+                           bank_name='', bank_code='', branch_name='', account='', account_name='',
+                           receipt=None, require_president=False):
+        requirement = self.create(applicant=applicant, kind=kind ,activity_date=activity_date, memo=memo)
+
+        if kind == Requirement.REIMBURSE:
+            if advance is None:
+                # Regular case
+                requirement = _add_bank_info(requirement, bank_name, bank_code, branch_name, account, account_name)
+                requirement = _attach_receipt(requirement, receipt, require_president)
+            else:
+                # After Advance
+                requirement.advance = advance
+                requirement = _attach_receipt(requirement, receipt, require_president)
+        elif kind == Requirement.ADVANCE:
+            # Advance
+            requirement = _add_bank_info(requirement, bank_name, bank_code, branch_name, account, account_name)
+
+        requirement.save()
+        return requirement
 
 class Requirement(models.Model):
     # Kind Choices
@@ -12,24 +52,15 @@ class Requirement(models.Model):
     )
 
     # State Choices
-    BLANK = 'B'
     DRAFT = 'D'
-    WAIT_D_CHIEF_VERIFY = 'V'
-    WAIT_PRESIDENT_VERIFY = 'P'
-    WAIT_F_STAFF_VERIFY = 'S'
-    WAIT_F_CHIEF_VERIFY = 'F'
-    APPROVED = 'A'
+    SUBMITTED = 'S'
     COMPLETE = 'C'
-    ABANDONED = 'B'
+    ABANDONED = 'A'
     STATE_CHOICES = (
         (DRAFT, '草稿'),
-        (WAIT_D_CHIEF_VERIFY, '等待部長確認'),
-        (WAIT_PRESIDENT_VERIFY, '等待會長確認'),
-        (WAIT_F_STAFF_VERIFY, '等待財務部部員審核'),
-        (WAIT_F_CHIEF_VERIFY, '等待財務部部長審核'),
-        (APPROVED, '審核通過'),
-        (COMPLETE, '請款完成'),
-        (ABANDONED, '請款失敗')
+        (SUBMITTED, '提交'),
+        (COMPLETE, '完成'),
+        (ABANDONED, '失敗')
     )
 
     # Progress Choices
@@ -48,41 +79,56 @@ class Requirement(models.Model):
         (NO_RECEIPT_AND_BALANCE_OVERDUE, '欠收據且餘款未繳回')
     )
 
-    # TODO: How to recognize the kind of user?
-
-    d_staff = models.ForeignKey('account.User')
+    # General fields for all kinds of requirement
+    applicant = models.ForeignKey('account.User')
     serial_number = models.CharField(max_length=12)
 
     kind = models.CharField(max_length=1, choices=KIND_CHOICES)
-
-    state = models.CharField(max_length=1, choices=STATE_CHOICES, default=DRAFT)
-
-    bank_code = models.CharField(max_length=4)
-    branch_code = models.CharField(max_length=5)
-    account = models.CharField(max_length=20)
-    account_name = models.CharField(max_length=12)
+    activity_date = models.DateTimeField(null=True)
+    memo = models.TextField()
 
     create_time = models.DateTimeField(auto_now_add=True)
     edit_time = models.DateTimeField(null=True)
     submit_time = models.DateTimeField(null=True)
     finalize_time = models.DateTimeField(null=True)
 
-    d_chief_verify = models.NullBooleanField(default=None)
-    d_cheif_verify_time = models.DateTimeField(null=True)
+    staff_verify = models.NullBooleanField(default=None)
+    staff_verify_time = models.DateTimeField(null=True)
+    staff_reject_reason = models.TextField()
 
+    chief_verify = models.NullBooleanField(default=None)
+    chief_verify_time = models.DateTimeField(null=True)
+    chief_reject_reason = models.TextField()
+
+    # For cases using reserves (require_president = True)
     president_verify = models.NullBooleanField(default=None)
+    president_verify_amount = models.PositiveIntegerField(null=True)
     president_verify_time = models.DateTimeField(null=True)
+    president_reject_reason = models.TextField()
 
-    f_staff_verify = models.NullBooleanField(default=None)
-    f_staff_verify_time = models.DateTimeField(null=True)
-    f_staff_reject_reason = models.TextField()
+    # For advances and regular cases
+    bank_name = models.CharField(max_length=10)
+    bank_code = models.CharField(max_length=4)
+    branch_name = models.CharField(max_length=5)
+    account = models.CharField(max_length=20)
+    account_name = models.CharField(max_length=12)
 
-    f_chief_verify = models.NullBooleanField(default=None)
-    f_cheif_verify_time = models.DateTimeField(null=True)
-    f_chief_reject_reason = models.TextField()
+    # For reimburses after advances
+    advance = models.ForeignKey('core.Requirement')
+    is_balanced = models.BooleanField(default=False)
 
-    pay_date = models.DateField(null=True)
-    expense = models.ForeignKey('core.ExpenseRecord', null=True)
+    # For regular cases and reimburses after advances
+    receipt = models.FileField(upload_to=file_path)
+    require_president = models.BooleanField(default=False)
+
+    objects = RequirementManager()
+
+    @property
+    def pay_date(self):
+        try:
+            return self.expenserecord.remit_date:
+        except ObjectDoesNotExist:
+            return None
 
     @property
     def stage(self):
@@ -108,14 +154,6 @@ class Requirement(models.Model):
                         return NO_RECEIPT_AND_BALANCE_OVERDUE
                 return None
 
-    @property
-    def need_president_verify(self):
-        # TODO: Set the condition for president to verify
-        if ...:
-            return True
-        else:
-            return False
-
     def edit(self, edit_dict):
         if not isinstance(edit_dict ,dict):
             raise TypeError('Input is not a dictionary')
@@ -129,95 +167,77 @@ class Requirement(models.Model):
             raise Exception('This requirement is not a draft: {}'.format(self.id))
 
     def submit(self):
-        # id = yyyymmdd + dep_id[dd]+ no[dd]
+        # Create serial_number = yyyymmdd + dep_id[dd]+ no[dd]
         now = timezone.now()
         year = now.year
         month = now.month
         day = now.day
 
         # department
-        dep = d_staff.department
+        dep = applicant.department
         # count of the requirements
-        count = Requirement.objects.filter(d_staff__department=dep, submit_time__date=now).count()
+        count = Requirement.objects.filter(applicant__department=dep).count()
 
         self.serial_number = str('{:4d}{:2d}{:2d}{:2d}{:2d}'.format(year, month, day, dep.id, count))
 
-        self.state = WAIT_D_CHIEF_VERIFY
-
+        self.state = SUBMITTED
         self.submit_time = now
         self.save()
         return self
 
-    def cite(self):
-        if self.state == ABANDONED:
-            requirement = Requirement.objects.create(d_staff=self.d_staff, kind=self.kind)
-            requirement.edit({
-                'bank_code': self.bank_code,
-                'branch_code': self.branch_code,
-                'account': self.account,
-                'account_name': self.account_name
-            })
-            requirement.save()
-            return requirement
-        else:
-            raise Exception('Requirement is not abandoned, thus cannot be copied: {}'.format(self.id))
-
-    def approve(self, user):
-        if (self.state == WAIT_D_CHIEF_VERIFY) and (user.kind == User.D_CHIEF):
-            self.d_chief_verify = True
-            self.d_chief_verify_time = timezone.now()
-            if self.need_president_verify:
-                self.state = WAIT_PRESIDENT_VERIFY
+    def approve(self, reviewer, amount=0):
+        if self.state == SUBMITTED:
+            if reviewer.kind == User.STAFF:
+                self.staff_verify = True
+                self.staff_verify_time = timezone.now()
+            elif reviewer.kind == User.CHEIF:
+                self.chief_verify = True
+                self.chief_verify_time = timezone.now()
+            elif (reviewer.kind == User.PRESIDENT) and (self.require_president):
+                self.president_verify = True
+                self.president_verify_time = timezone.now()
+                self.president_verify_amount = amount
             else:
-                self.state = WAIT_F_STAFF_VERIFY
-        elif (self.state == WAIT_PRESIDENT_VERIFY) and (user.kind == User.PRESIDENT):
-            self.president_verify = True
-            self.president_verify_time = timezone.now()
-            self.state = WAIT_F_STAFF_VERIFY
-        elif (self.state == WAIT_F_STAFF_VERIFY) and (user.kind == User.F_STAFF):
-            self.f_staff_verify = True
-            self.f_staff_verify_time = timezone.now()
-            self.state = WAIT_F_CHIEF_VERIFY
-        elif (self.state == WAIT_F_CHIEF_VERIFY) and (user.kind == User.F_CHIEF):
-            self.f_chief_verify = True
-            self.f_chief_verify_time = timezone.now()
-            if self.kind == REIMBURSE:
-                self.state = COMPLETE
+                raise ValueError('User kind is not valid: {}'.format(reviewer.get_kind_display()))
+        else:
+            raise ValueError('Requirement cannot be reviewed: {}'.format(self.id))
+
+        # Close up after all required reviews are complete
+        if self.staff_verify and self.chief_verify:
+            if self.require_president:
+                if self.president_verify:
+                    self.finalize_time = timezone.now()
+                    self.state = COMPLETE
+            else:
                 self.finalize_time = timezone.now()
-        else:
-            raise ValueError('Identity is not valid: {}'.format(identity))
+                self.state = COMPLETE
+
         self.save()
         return self
 
-    def reject(self, user, reason=''):
-        if (self.state == WAIT_D_CHIEF_VERIFY) and (user.kind == User.D_CHIEF):
-            self.d_chief_verify = False
-            self.d_chief_verify_time = timezone.now()
-        elif (self.state == WAIT_PRESIDENT_VERIFY) and (user.kind == User.PRESIDENT):
-            self.president_verify = False
-            self.president_verify_time = timezone.now()
-        elif (self.state == WAIT_F_STAFF_VERIFY) and (user.kind == User.F_STAFF):
-            self.f_staff_verify = False
-            self.f_staff_verify_time = timezone.now()
-            self.f_staff_reject_reason = reason
-        elif (self.state == WAIT_F_CHIEF_VERIFY) and (user.kind == User.F_CHIEF):
-            self.f_chief_verify = False
-            self.f_chief_verify_time = timezone.now()
-            self.f_chief_reject_reason = reason
-        else:
-            raise ValueError('Identity is not valid: {}'.format(user.get_identity_display()))
-        self.state = ABANDONED
-        self.finalize_time = timezone.now()
-        self.save()
-        return self
-
-    def close(self):
-        if (self.state == DRAFT):
+    def reject(self, reviewer, reason=''):
+        if self.state == SUBMITTED:
+            self.state = ABANDONED
             self.finalize_time = timezone.now()
-            self.save()
-            return self
+            if reviewer.kind == User.STAFF:
+                self.staff_verify = False
+                self.staff_verify_time = timezone.now()
+                self.staff_reject_reason = reason
+            elif reviewer.kind == User.CHIEF:
+                self.chief_verify = False
+                self.chief_verify_time = timezone.now()
+                self.chief_reject_reason = reason
+            elif reviewer.kind == User.PRESIDENT:
+                self.president_verify = False
+                self.president_verify_time = timezone.now()
+                self.president_reject_reason = reason
+            else:
+                raise ValueError('User kind is not valid: {}'.format(reviewer.get_kind_display()))
         else:
-            raise Exception('Requirement cannot be closed since it was submitted: {}'.format(self.serial_number))
+            raise ValueError('Requirement cannot be reviewed: {}'.format(self.id))
+
+        self.save()
+        return self
 
     def __str__(self):
         return 'Requirement: Unique ID {0}, serial number {1}'.format(str(self.id),str(self.serial_number))
