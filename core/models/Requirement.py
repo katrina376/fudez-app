@@ -7,18 +7,25 @@ from django.utils import timezone
 from account.models import User
 
 def file_path(instance, filename):
-    path = 'draft/'
+    path = 'upload/'
     name = '{}_{}'.format(timezone.now(), filename)
     return os.path.join(path, name)
 
 class RequirementManager(models.Manager):
-    # General: applicant, activity_date, memo
-    # Regular: bank_name, bank_code, branch_name, account, account_name, receipt, require_president
-    # Advance: bank_name, bank_code, branch_name, account, account_name
-    # Reimburse after advance: advance, receipt, require_president
     def _add_bank_info(instance, bank_name, bank_code, branch_name, account, account_name):
+        instance.bank_name = bank_name
+        instance.bank_code = bank_code
+        instance.branch_name = branch_name
+        instance.account = account
+        instance.account_name = account_name
+        instance.save()
+        return instance
 
     def _attach_receipt(instance, receipt, require_president):
+        instance.receipt = receipt
+        instance.require_president = require_president
+        instance.save()
+        return instance
 
     def create_requirement(self, applicant, kind, activity_date, memo,
                            advance=None,
@@ -27,14 +34,13 @@ class RequirementManager(models.Manager):
         requirement = self.create(applicant=applicant, kind=kind ,activity_date=activity_date, memo=memo)
 
         if kind == Requirement.REIMBURSE:
+            requirement = _attach_receipt(requirement, receipt, require_president)
             if advance is None:
                 # Regular case
                 requirement = _add_bank_info(requirement, bank_name, bank_code, branch_name, account, account_name)
-                requirement = _attach_receipt(requirement, receipt, require_president)
             else:
                 # After Advance
                 requirement.advance = advance
-                requirement = _attach_receipt(requirement, receipt, require_president)
         elif kind == Requirement.ADVANCE:
             # Advance
             requirement = _add_bank_info(requirement, bank_name, bank_code, branch_name, account, account_name)
@@ -126,10 +132,11 @@ class Requirement(models.Model):
     @property
     def pay_date(self):
         try:
-            return self.expenserecord.remit_date:
+            return self.expenserecord.remit_date
         except ObjectDoesNotExist:
             return None
 
+    # QUESTION: Make progress a field or a property?
     @property
     def stage(self):
         if self.state == DRAFT:
