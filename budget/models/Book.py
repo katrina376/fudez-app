@@ -10,17 +10,33 @@ class Book(models.Model):
     announce_date = models.DateField()
 
     @property
-    def estimated_amount(self):
+    def estimated_income(self):
         total = 0
         projects = self.project_set.all()
         for prj in projects:
-            total += prj.estimated_amount
+            total += prj.estimated_income
         return total
 
     @property
-    def actual_amount(self):
+    def estimated_expense(self):
         total = 0
         projects = self.project_set.all()
         for prj in projects:
-            total += prj.actual_amount
+            total += prj.estimated_expense
+        return total
+
+    @property
+    def actual_income(self):
+        total = 0
+        projects = self.project_set.all()
+        for prj in projects:
+            total += prj.actual_income
+        return total
+
+    @property
+    def actual_expense(self):
+        total = 0
+        projects = self.project_set.all()
+        for prj in projects:
+            total += prj.actual_expense
         return total
