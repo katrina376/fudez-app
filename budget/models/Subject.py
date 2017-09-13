@@ -5,8 +5,8 @@ class Subject(models.Model):
     INCOME = 'I'
     EXPENSE = 'E'
     KIND_CHOICES = (
-        (INCOME, '期入'),
-        (EXPENSE, '期出')
+        (INCOME, '收入'),
+        (EXPENSE, '支出')
     )
 
     project = models.ForeignKey('budget.Project')
