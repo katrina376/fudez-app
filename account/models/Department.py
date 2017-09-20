@@ -17,7 +17,7 @@ class Department(models.Model):
     id = models.IntegerField(primary_key=True)
     name = models.CharField(max_length=16)
     kind = models.CharField(max_length=1, choices=KIND_CHOICES)
-    fa = models.ForeignKey('account.User', null=True, related_name='+',)
+    assistant = models.ForeignKey('account.User', null=True, related_name='+',)
 
     @property
     def is_locked(self):
@@ -36,10 +36,6 @@ class Department(models.Model):
             res = False
 
         return res
-
-    @property
-    def bank_accounts(self):
-        return self.bankaccount_set.all()
 
     def __str__(self):
         return self.name
