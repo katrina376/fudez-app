@@ -17,7 +17,7 @@ class Department(models.Model):
     id = models.IntegerField(primary_key=True)
     name = models.CharField(max_length=16)
     kind = models.CharField(max_length=1, choices=KIND_CHOICES)
-    assistant = models.ForeignKey('account.User', null=True, related_name='+',)
+    assistant = models.ForeignKey('account.User', null=True, related_name='assist_departments')
 
     @property
     def is_locked(self):
@@ -32,7 +32,7 @@ class Department(models.Model):
 
         # Check UnlockRecord
         now = timezone.now()
-        if self.unlockrecord_set.filter(start_time__lt=now, end_time__gt=now).exists():
+        if self.unlockrecords.filter(start_time__lt=now, end_time__gt=now).exists():
             res = False
 
         return res

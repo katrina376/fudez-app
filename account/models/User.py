@@ -34,7 +34,7 @@ class User(AbstractBaseUser):
     name = models.CharField(max_length=16)
     email = models.EmailField()
 
-    department = models.ForeignKey('account.Department')
+    department = models.ForeignKey('account.Department', related_name='users')
     kind = models.CharField(max_length=1, choices=KIND_CHOICES)
 
     create_time = models.DateTimeField(auto_now_add=True)

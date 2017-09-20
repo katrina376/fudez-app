@@ -134,7 +134,7 @@ class Requirement(models.Model):
     @property
     def pay_date(self):
         try:
-            return self.expenserecord.remit_date
+            return self.expense_record.remit_date
         except ObjectDoesNotExist:
             return None
 

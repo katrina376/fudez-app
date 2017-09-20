@@ -1,7 +1,7 @@
 from django.db import models
 
 class ExpenseRecord(models.Model):
-    requirement = models.OneToOneField('core.Requirement', primary_key=True)
+    requirement = models.OneToOneField('core.Requirement', primary_key=True, related_name='expense_record')
 
     serial_number = models.CharField(max_length=8)
     memo = models.TextField()

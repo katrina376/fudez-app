@@ -1,7 +1,7 @@
 from django.db import models
 
 class Item(models.Model):
-    subject = models.ForeignKey('budget.Subject')
+    subject = models.ForeignKey('budget.Subject', related_name='items')
 
     name = models.CharField(max_length=32)
     estimated_amount = models.PositiveIntegerField(null=True)
@@ -11,7 +11,7 @@ class Item(models.Model):
     @property
     def actual_amount(self):
         total = 0
-        funds = self.fund_set.all()
+        funds = self.funds.all()
         for f in funds:
             total += f.amount
         return total
@@ -22,5 +22,5 @@ class Item(models.Model):
 
     @property
     def report(self):
-        funds = self.fund_set.all()
+        funds = self.funds.all()
         return '\n'.join(funds)
