@@ -1,4 +1,5 @@
 import os
+from datetime.datetime import timestamp
 
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import models
@@ -7,8 +8,9 @@ from django.utils import timezone
 from account.models import User
 
 def file_path(instance, filename):
+    ts = int(timestamp(timezone.now()))
     path = 'upload/'
-    name = '{}_{}'.format(timezone.now(), filename)
+    name = '{}_{}'.format(str(ts), filename)
     return os.path.join(path, name)
 
 class RequirementManager(models.Manager):
@@ -136,9 +138,8 @@ class Requirement(models.Model):
         except ObjectDoesNotExist:
             return None
 
-    # QUESTION: Make progress a field or a property?
     @property
-    def stage(self):
+    def progress(self):
         if self.state == DRAFT:
             return None
         else:
@@ -150,16 +151,15 @@ class Requirement(models.Model):
                 else:
                     return IN_PROGRESS
             else:
-                for a in self.advance_set.all():
-                    if a.is_balanced and a.receipt_set.exists():
-                        return IN_PROGRESS
-                    elif a.is_balanced:
-                        return NO_RECEIPT
-                    elif receipts.exists():
-                        BALANCE_OVERDUE
-                    else:
-                        return NO_RECEIPT_AND_BALANCE_OVERDUE
-                return None
+                if self.advance.is_balanced and self.receipt:
+                    return IN_PROGRESS
+                elif self.advance.is_balanced:
+                    return NO_RECEIPT
+                elif self.receipt:
+                    return BALANCE_OVERDUE
+                else:
+                    return NO_RECEIPT_AND_BALANCE_OVERDUE
+            return None
 
     def edit(self, edit_dict):
         if not isinstance(edit_dict ,dict):
