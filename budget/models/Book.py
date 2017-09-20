@@ -3,7 +3,7 @@ from django.db import models
 class Book(models.Model):
     session = models.ForeignKey('budget.Session')
 
-    title = models.CharField(max_length=32)
+    name = models.CharField(max_length=32)
     description = models.TextField()
 
     is_active = models.BooleanField(default=True)
