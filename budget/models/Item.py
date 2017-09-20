@@ -1,4 +1,5 @@
 from django.db import models
+from core.models import Requirement
 
 class Item(models.Model):
     subject = models.ForeignKey('budget.Subject', related_name='items')
@@ -11,7 +12,7 @@ class Item(models.Model):
     @property
     def actual_amount(self):
         total = 0
-        funds = self.funds.all()
+        funds = self.funds.filter(requirement__kind=Requirement.REIMBURSE, requirement__state=Requirement.COMPLETE)
         for f in funds:
             total += f.amount
         return total
@@ -22,5 +23,5 @@ class Item(models.Model):
 
     @property
     def report(self):
-        funds = self.funds.all()
+        funds = self.funds.filter(requirement__kind=Requirement.REIMBURSE, requirement__state=Requirement.COMPLETE)
         return '\n'.join(funds)
