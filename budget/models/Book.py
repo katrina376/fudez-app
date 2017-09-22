@@ -11,32 +11,16 @@ class Book(models.Model):
 
     @property
     def estimated_income(self):
-        total = 0
-        projects = self.projects.all()
-        for prj in projects:
-            total += prj.estimated_income
-        return total
+        return sum(project.estimated_income for project in self.projects.all())
 
     @property
     def estimated_expense(self):
-        total = 0
-        projects = self.projects.all()
-        for prj in projects:
-            total += prj.estimated_expense
-        return total
+        return sum(project.estimated_expense for project in self.projects.all())
 
     @property
     def actual_income(self):
-        total = 0
-        projects = self.projects.all()
-        for prj in projects:
-            total += prj.actual_income
-        return total
+        return sum(project.actual_income for project in self.projects.all())
 
     @property
     def actual_expense(self):
-        total = 0
-        projects = self.projects.all()
-        for prj in projects:
-            total += prj.actual_expense
-        return total
+        return sum(project.actual_expense for project in self.projects.all())

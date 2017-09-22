@@ -9,32 +9,16 @@ class Project(models.Model):
 
     @property
     def estimated_income(self):
-        total = 0
-        subjects = self.subjects.filter(kind=Subject.INCOME)
-        for sub in subjects:
-            total += sub.estimated_amount
-        return total
+        return sum(subject.estimated_income for subject in self.subjects.filter(kind=Subject.INCOME))
 
     @property
     def estimated_expense(self):
-        total = 0
-        subjects = self.subjects.filter(kind=Subject.EXPENSE)
-        for sub in subjects:
-            total += sub.estimated_amount
-        return total
+        return sum(subject.estimated_expense for subject in self.subjects.filter(kind=Subject.EXPENSE))
 
     @property
     def actual_income(self):
-        total = 0
-        subjects = self.subjects.filter(kind=Subject.INCOME)
-        for sub in subjects:
-            total += sub.actual_amount
-        return total
+        return sum(subject.actual_income for subject in self.subjects.filter(kind=Subject.INCOME))
 
     @property
     def actual_expense(self):
-        total = 0
-        subjects = self.subjects.filter(kind=Subject.EXPENSE)
-        for sub in subjects:
-            total += sub.actual_amount
-        return total
+        return sum(subject.actual_expense for subject in self.subjects.filter(kind=Subject.EXPENSE))

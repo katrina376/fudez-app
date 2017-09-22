@@ -11,11 +11,7 @@ class Item(models.Model):
 
     @property
     def actual_amount(self):
-        total = 0
-        funds = self.funds.filter(requirement__kind=Requirement.REIMBURSE, requirement__state=Requirement.COMPLETE)
-        for f in funds:
-            total += f.amount
-        return total
+        return sum(fund.amount for fund in self.funds)
 
     @property
     def efficiency(self):
@@ -23,5 +19,4 @@ class Item(models.Model):
 
     @property
     def report(self):
-        funds = self.funds.filter(requirement__kind=Requirement.REIMBURSE, requirement__state=Requirement.COMPLETE)
-        return '\n'.join(funds)
+        return '\n'.join(fund.memo for fund in self.funds)
