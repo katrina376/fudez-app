@@ -1,5 +1,5 @@
+from django.conf import settings
 from django.db import models
-from django.core.exceptions import ValidationError
 from django.utils import timezone
 from core.models import Requirement
 
@@ -14,17 +14,17 @@ class Department(models.Model):
         (JUDICIAL, '司法部門')
     )
 
-    id = models.IntegerField(primary_key=True)
-    name = models.CharField(max_length=16)
-    kind = models.CharField(max_length=1, choices=KIND_CHOICES)
-    assistant = models.ForeignKey('account.User', null=True, related_name='assist_departments')
+    id = models.IntegerField(primary_key=True, unique=True)
+    name = models.CharField(max_length=16, default='暫存')
+    kind = models.CharField(max_length=1, choices=KIND_CHOICES, default=EXECUTIVE)
+    assistant = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, related_name='assist_departments')
 
     @property
     def is_locked(self):
         res = False
 
         # Check advance requirements
-        advances = Requirement.objects.filter(applicant__department=self)
+        advances = Requirement.objects.filter(applicant__department=self, kind=Requirement.ADVANCE)
         for a in advances:
             if not a.is_complete:
                 res = True
