@@ -1,5 +1,5 @@
 import os
-from datetime.datetime import timestamp
+from datetime import datetime
 
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import models
@@ -8,7 +8,7 @@ from django.utils import timezone
 from account.models import User
 
 def file_path(instance, filename):
-    ts = int(timestamp(timezone.now()))
+    ts = int(datetime.timestamp(timezone.now()))
     path = 'upload/'
     name = '{}_{}'.format(str(ts), filename)
     return os.path.join(path, name)
@@ -37,11 +37,9 @@ class RequirementManager(models.Manager):
 
         if kind == Requirement.REIMBURSE:
             requirement = _attach_receipt(requirement, receipt, require_president)
-            if advance is None:
-                # Regular case
-                requirement = _add_bank_info(requirement, bank_name, bank_code, branch_name, account, account_name)
-            else:
-                # After Advance
+            requirement = _add_bank_info(requirement, bank_name, bank_code, branch_name, account, account_name)
+            # After Advance
+            if advance is not None:
                 requirement.advance = advance
         elif kind == Requirement.ADVANCE:
             # Advance
@@ -88,7 +86,7 @@ class Requirement(models.Model):
     )
 
     # General fields for all kinds of requirement
-    applicant = models.ForeignKey('account.User')
+    applicant = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
     serial_number = models.CharField(max_length=12)
 
     kind = models.CharField(max_length=1, choices=KIND_CHOICES)
@@ -110,7 +108,7 @@ class Requirement(models.Model):
 
     # For cases using reserves (require_president = True)
     president_verify = models.NullBooleanField(default=None)
-    president_verify_amount = models.PositiveIntegerField(null=True)
+    president_approve_reserves = models.PositiveIntegerField(null=True)
     president_verify_time = models.DateTimeField(null=True)
     president_reject_reason = models.TextField()
 
@@ -122,8 +120,7 @@ class Requirement(models.Model):
     account_name = models.CharField(max_length=12)
 
     # For reimburses after advances
-    advance = models.ForeignKey('core.Requirement')
-    is_balanced = models.BooleanField(default=False)
+    advance = models.ForeignKey('core.Requirement', related_name='reimburses')
 
     # For regular cases and reimburses after advances
     receipt = models.FileField(upload_to=file_path)
@@ -132,11 +129,21 @@ class Requirement(models.Model):
     objects = RequirementManager()
 
     @property
-    def pay_date(self):
-        try:
-            return self.expense_record.remit_date
-        except ObjectDoesNotExist:
-            return None
+    def amount(self):
+	    return self.funds.aggregate(models.Sum('amount'))
+
+    @property
+    def is_balanced(self):
+        if self.kind == REIMBURSE:
+            return True
+        else:
+            expense_amount = self.expense_records.filter(kind=ExpenseRecord.EXPENSE).aggregate(models.SUM('amount'))
+            return_amount = self.expense_records.filter(kind=ExpenseRecord.INCOME).aggregate(models.SUM('amount'))
+            expense_sum = expense_amount - return_amount
+
+            reimburse_amount = Fund.objects.filter(requirement__in=self.reimburses).aggregate(models.SUM('amount'))
+
+            return expense_sum == self.amount - reimburse_amount
 
     @property
     def progress(self):
@@ -203,7 +210,7 @@ class Requirement(models.Model):
             elif (reviewer.kind == User.PRESIDENT) and (self.require_president):
                 self.president_verify = True
                 self.president_verify_time = timezone.now()
-                self.president_verify_amount = amount
+                self.president_approve_reserves = amount
             else:
                 raise ValueError('User kind is not valid: {}'.format(reviewer.get_kind_display()))
         else:
