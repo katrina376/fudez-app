@@ -13,7 +13,23 @@ def file_path(instance, filename):
     name = '{}_{}'.format(str(ts), filename)
     return os.path.join(path, name)
 
+class RequirementQuerySet(models.QuerySet):
+    def advances(self):
+        return self.filter(kind=Requirement.ADVANCE)
+
+    def reimburses(self):
+        return self.filter(kind=Requirement.REIMBURSE)
+
 class RequirementManager(models.Manager):
+    def get_queryset(self):
+        return RequirementQuerySet(self.model, using=self._db)
+
+    def advances(self):
+        return self.get_queryset().advances()
+
+    def reimburses(self):
+        return self.get_queryset().reimburses()
+
     def _add_bank_info(instance, bank_name, bank_code, branch_name, account, account_name):
         instance.bank_name = bank_name
         instance.bank_code = bank_code
@@ -130,15 +146,15 @@ class Requirement(models.Model):
 
     @property
     def amount(self):
-	    return self.funds.aggregate(models.Sum('amount'))
+	    return self.funds.approved().aggregate(models.Sum('amount'))
 
     @property
     def is_balanced(self):
         if self.kind == REIMBURSE:
             return True
         else:
-            expense_amount = self.expense_records.filter(kind=ExpenseRecord.EXPENSE).aggregate(models.SUM('amount'))
-            return_amount = self.expense_records.filter(kind=ExpenseRecord.INCOME).aggregate(models.SUM('amount'))
+            expense_amount = self.expense_records.expense().aggregate(models.SUM('amount'))
+            return_amount = self.expense_records.income().aggregate(models.SUM('amount'))
             expense_sum = expense_amount - return_amount
 
             reimburse_amount = Fund.objects.filter(requirement__in=self.reimburses).aggregate(models.SUM('amount'))
@@ -210,7 +226,7 @@ class Requirement(models.Model):
             elif (reviewer.kind == User.PRESIDENT) and (self.require_president):
                 self.president_verify = True
                 self.president_verify_time = timezone.now()
-                self.president_approve_reserves = amount
+                self.president_approve_reserves = Fund.objects.approve_reserves(amount=amount, requirement=self)
             else:
                 raise ValueError('User kind is not valid: {}'.format(reviewer.get_kind_display()))
         else:

@@ -10,8 +10,16 @@ class Item(models.Model):
     addition = models.TextField()
 
     @property
+	def advances(self):
+        return Requirement.objects.advances().filter(funds__in=self.funds.approved())
+
+	@property
+	def reimburses(self):
+        return Requirement.objects.reimburses().filter(funds__in=self.funds.approved())
+
+	@property
     def actual_amount(self):
-        return sum(fund.amount for fund in self.funds)
+        return self.funds.approved().aggregate(models.Sum('amount'))
 
     @property
     def efficiency(self):
@@ -19,4 +27,4 @@ class Item(models.Model):
 
     @property
     def report(self):
-        return '\n'.join(fund.memo for fund in self.funds)
+        return '\n'.join([fund.memo for fund in self.funds.approved()])
