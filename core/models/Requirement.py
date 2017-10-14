@@ -139,8 +139,7 @@ class Requirement(models.Model):
     advance = models.ForeignKey('core.Requirement', related_name='reimburses')
 
     # For regular cases and reimburses after advances
-    receipt = models.FileField(upload_to=file_path)
-    require_president = models.BooleanField(default=False)
+    receipt = models.FileField(upload_to=file_path, null=True)
 
     objects = RequirementManager()
 
