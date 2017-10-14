@@ -9,9 +9,11 @@ class Subject(models.Model):
         (EXPENSE, '支出')
     )
 
-    project = models.ForeignKey('budget.Project', related_name='subjects')
+    project = models.ForeignKey('budget.Project', on_delete=models.CASCADE, related_name='subjects')
     name = models.CharField(max_length=16)
     kind = models.CharField(max_length=1, choices=KIND_CHOICES)
+
+    is_reserves = models.BooleanField(default=False)
 
     @property
     def estimated_amount(self):
