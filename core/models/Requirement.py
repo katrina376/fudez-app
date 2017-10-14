@@ -6,6 +6,7 @@ from django.db import models
 from django.utils import timezone
 
 from account.models import User
+from core.models import Fund
 
 def file_path(instance, filename):
     ts = int(datetime.timestamp(timezone.now()))
@@ -124,7 +125,7 @@ class Requirement(models.Model):
 
     # For cases using reserves (require_president = True)
     president_verify = models.NullBooleanField(default=None)
-    president_approve_reserves = models.PositiveIntegerField(null=True)
+    president_approve_reserves = models.OneToOneField('core.Fund', on_delete=models.CASCADE, null=True)
     president_verify_time = models.DateTimeField(null=True)
     president_reject_reason = models.TextField()
 
