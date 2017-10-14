@@ -40,20 +40,19 @@ class RequirementManager(models.Manager):
         instance.save()
         return instance
 
-    def _attach_receipt(instance, receipt, require_president):
+    def _attach_receipt(instance, receipt):
         instance.receipt = receipt
-        instance.require_president = require_president
         instance.save()
         return instance
 
     def create_requirement(self, applicant, kind, activity_date, memo,
                            advance=None,
                            bank_name='', bank_code='', branch_name='', account='', account_name='',
-                           receipt=None, require_president=False):
+                           receipt=None):
         requirement = self.create(applicant=applicant, kind=kind ,activity_date=activity_date, memo=memo)
 
         if kind == Requirement.REIMBURSE:
-            requirement = _attach_receipt(requirement, receipt, require_president)
+            requirement = _attach_receipt(requirement, receipt)
             requirement = _add_bank_info(requirement, bank_name, bank_code, branch_name, account, account_name)
             # After Advance
             if advance is not None:
@@ -123,7 +122,7 @@ class Requirement(models.Model):
     chief_verify_time = models.DateTimeField(null=True)
     chief_reject_reason = models.TextField()
 
-    # For cases using reserves (require_president = True)
+    # For cases that require_president = True
     president_verify = models.NullBooleanField(default=None)
     president_approve_reserves = models.OneToOneField('core.Fund', on_delete=models.CASCADE, null=True)
     president_verify_time = models.DateTimeField(null=True)
@@ -148,6 +147,13 @@ class Requirement(models.Model):
     @property
     def amount(self):
 	    return self.funds.approved().aggregate(models.Sum('amount'))
+
+    @property
+    def require_president(self):
+        if self.amount >= 10000 or self.funds.filter(item__subject__is_reserves).exists():
+            return True
+        else:
+            return False
 
     @property
     def is_balanced(self):
