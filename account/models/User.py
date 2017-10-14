@@ -6,9 +6,6 @@ from django.db import models
 
 from account.models import Department
 
-def get_sentinel_department():
-    return Department.objects.get_or_create(id=0)[0]
-
 class User(AbstractBaseUser, PermissionsMixin):
     # Kind Choices
     DEPARTMENT = 'D'
@@ -31,7 +28,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     name = models.CharField(max_length=16)
     email = models.EmailField()
 
-    department = models.ForeignKey('account.Department', on_delete=models.SET(get_sentinel_department), related_name='users', null=True)
+    department = models.ForeignKey('account.Department', on_delete=models.PROTECT, related_name='users')
     kind = models.CharField(max_length=1, choices=KIND_CHOICES, default=DEPARTMENT)
 
     create_time = models.DateTimeField(auto_now_add=True)
@@ -44,7 +41,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     objects = UserManager()
 
     USERNAME_FIELD = 'username'
-    REQUIRED_FIELDS = ['name', 'email', 'kind']
+    REQUIRED_FIELDS = ['name', 'email', 'kind', 'department']
 
     def get_long_name(self):
         return self.name

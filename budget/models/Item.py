@@ -2,7 +2,7 @@ from django.db import models
 from core.models import Requirement
 
 class Item(models.Model):
-    subject = models.ForeignKey('budget.Subject', related_name='items')
+    subject = models.ForeignKey('budget.Subject', on_delete=models.CASCADE, related_name='items')
 
     name = models.CharField(max_length=32)
     estimated_amount = models.PositiveIntegerField(null=True)

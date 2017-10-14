@@ -17,7 +17,7 @@ class Department(models.Model):
     id = models.IntegerField(primary_key=True, unique=True)
     name = models.CharField(max_length=16, default='暫存')
     kind = models.CharField(max_length=1, choices=KIND_CHOICES, default=EXECUTIVE)
-    assistant = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, related_name='assist_departments')
+    assistant = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='assist_departments')
 
     @property
     def is_locked(self):

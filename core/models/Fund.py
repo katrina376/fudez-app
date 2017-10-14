@@ -30,8 +30,8 @@ class Fund(models.Model):
 
     status = models.CharField(max_length=1, choices=STATUS_CHOICES, default=NORMAL)
 
-    item = models.ForeignKey('budget.Item', related_name='funds')
-    requirement = models.ForeignKey('core.Requirement', related_name='funds')
+    item = models.ForeignKey('budget.Item', on_delete=models.PROTECT, related_name='funds')
+    requirement = models.ForeignKey('core.Requirement', on_delete=models.CASCADE, related_name='funds')
     reserves = models.ForeignKey('core.Fund', on_delete=models.CASCADE, null=True, unique=True)
 
     amount = models.PositiveIntegerField()

@@ -136,7 +136,7 @@ class Requirement(models.Model):
     account_name = models.CharField(max_length=12)
 
     # For reimburses after advances
-    advance = models.ForeignKey('core.Requirement', related_name='reimburses')
+    advance = models.ForeignKey('core.Requirement', on_delete=models.SET_NULL, null=True, related_name='reimburses')
 
     # For regular cases and reimburses after advances
     receipt = models.FileField(upload_to=file_path, null=True)
