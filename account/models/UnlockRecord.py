@@ -7,4 +7,4 @@ class UnlockRecord(models.Model):
     reason = models.TextField()
 
     def __str__(self):
-        return '{} {}-{}'.format(self.department, start_time, end_time)
+        return '{} {}-{}'.format(self.department, self.start_time, self.end_time)

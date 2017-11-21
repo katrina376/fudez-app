@@ -10,14 +10,14 @@ class User(AbstractBaseUser, PermissionsMixin):
     # Kind Choices
     DEPARTMENT = 'D'
     STAFF = 'S'
-    CHEIF = 'C'
+    CHIEF = 'C'
     PRESIDENT = 'P'
     AUDIT = 'A'
     ENGINEER = 'E'
     KIND_CHOICES = (
         (DEPARTMENT, '一般單位請款帳號'),
         (STAFF, '財務部部員'),
-        (CHEIF, '財務部部長'),
+        (CHIEF, '財務部部長'),
         (PRESIDENT, '會長、議長、院務會議'),
         (AUDIT, '審查'),
         (ENGINEER, '工程師')

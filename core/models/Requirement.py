@@ -1,6 +1,7 @@
 import os
 from datetime import datetime
 
+from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import models
 from django.utils import timezone
@@ -124,7 +125,7 @@ class Requirement(models.Model):
 
     # For cases that require_president = True
     president_verify = models.NullBooleanField(default=None)
-    president_approve_reserves = models.OneToOneField('core.Fund', on_delete=models.CASCADE, null=True)
+    president_approve_reserves = models.OneToOneField('core.Fund', on_delete=models.CASCADE, null=True, related_name='approve_reserves')
     president_verify_time = models.DateTimeField(null=True)
     president_reject_reason = models.TextField()
 
@@ -226,7 +227,7 @@ class Requirement(models.Model):
             if reviewer.kind == User.STAFF:
                 self.staff_verify = True
                 self.staff_verify_time = timezone.now()
-            elif reviewer.kind == User.CHEIF:
+            elif reviewer.kind == User.CHIEF:
                 self.chief_verify = True
                 self.chief_verify_time = timezone.now()
             elif (reviewer.kind == User.PRESIDENT) and (self.require_president):
