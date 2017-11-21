@@ -1,0 +1,4 @@
+Django==1.11.7
+djangorestframework==3.7.3
+djangorestframework_simplejwt==3.2
+django-request-logging==0.5.2
