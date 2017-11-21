@@ -17,7 +17,7 @@ class Subject(models.Model):
 
     @property
     def estimated_amount(self):
-        return self.items.aggregate(models.Sum('estimated_amount'))
+        return self.items.aggregate(models.Sum('estimated_amount'))['estimated_amount__sum']
 
     @property
     def actual_amount(self):

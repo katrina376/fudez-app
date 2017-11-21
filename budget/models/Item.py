@@ -10,20 +10,23 @@ class Item(models.Model):
     addition = models.TextField()
 
     @property
-	def advances(self):
+    def advances(self):
         return Requirement.objects.advances().filter(funds__in=self.funds.approved())
 
-	@property
-	def reimburses(self):
+    @property
+    def reimburses(self):
         return Requirement.objects.reimburses().filter(funds__in=self.funds.approved())
 
-	@property
+    @property
     def actual_amount(self):
-        return self.funds.approved().aggregate(models.Sum('amount'))
+        return self.funds.approved().aggregate(models.Sum('amount'))['amount__sum']
 
     @property
     def efficiency(self):
-        return float(self.actual_amount / self.estimated_amount) * 100
+        if self.estimated_amount > 0:
+            return float(self.actual_amount / self.estimated_amount) * 100
+        else:
+            return 0
 
     @property
     def report(self):
