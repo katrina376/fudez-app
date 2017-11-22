@@ -5,21 +5,16 @@ from rest_framework.response import Response
 from account.models import User
 from account.serializers import BasicUserSerializer, UserSerializer
 
-from .permissions import IsAdminUserOrReadOnly, IsSelfOrReadOnly
+from .permissions import IsAdminUserOrReadOnly
 
 from django.shortcuts import get_object_or_404
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
-    permission_classes = (permissions.IsAuthenticated, )
+    permission_classes = (permissions.IsAuthenticated, IsAdminUserOrReadOnly)
 
     def get_serializer_class(self):
         if self.request.method in permissions.SAFE_METHODS:
             return UserSerializer
         else:
             return BasicUserSerializer
-
-    @detail_route(methods=['patch'], permission_classes=[IsSelfOrReadOnly], url_path='update-info')
-    def update_info(self, request, pk=None):
-        user = request.user
-        return Response()
