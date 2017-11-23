@@ -1,5 +1,5 @@
 from django.db import models
-from core.models import Requirement
+from core.models import AdvanceRequirement, RegularRequirement
 
 class Item(models.Model):
     subject = models.ForeignKey('budget.Subject', on_delete=models.CASCADE, related_name='items')
@@ -11,15 +11,16 @@ class Item(models.Model):
 
     @property
     def advances(self):
-        return Requirement.objects.advances().filter(funds__in=self.funds.approved())
+        return AdvanceRequirement.objects.filter(funds__in=self.funds.normal(), regularrequirement__isnull=True)
 
     @property
-    def reimburses(self):
-        return Requirement.objects.reimburses().filter(funds__in=self.funds.approved())
+    def regulars(self):
+        return RegularRequirement.objects.filter(funds__in=self.funds.normal())
 
     @property
     def actual_amount(self):
-        return self.funds.approved().aggregate(models.Sum('amount'))['amount__sum']
+        total = self.funds.approved().aggregate(total=models.Sum('amount'))['total']
+        return 0 if total is None else total
 
     @property
     def efficiency(self):
