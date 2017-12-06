@@ -24,3 +24,7 @@ class ExpenseRecord(models.Model):
     amount = models.PositiveIntegerField(default=0)
 
     objects = ExpenseRecordQuerySet.as_manager()
+
+    @property
+    def department(self):
+        return self.requirement.department
