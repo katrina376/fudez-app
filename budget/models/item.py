@@ -1,8 +1,11 @@
 from django.db import models
-from core.models import AdvanceRequirement, RegularRequirement
+
+from core.models import Requirement
+
 
 class Item(models.Model):
-    subject = models.ForeignKey('budget.Subject', on_delete=models.CASCADE, related_name='items')
+    subject = models.ForeignKey(
+        'budget.Subject', on_delete=models.CASCADE, related_name='items')
 
     name = models.CharField(max_length=32)
     estimated_amount = models.PositiveIntegerField(null=True)
@@ -11,15 +14,16 @@ class Item(models.Model):
 
     @property
     def advances(self):
-        return AdvanceRequirement.objects.filter(funds__in=self.funds.normal(), regularrequirement__isnull=True)
+        return Requirement.objects.advances().filter(funds__in=self.funds.normal())
 
     @property
     def regulars(self):
-        return RegularRequirement.objects.filter(funds__in=self.funds.normal())
+        return Requirement.objects.regulars().filter(funds__in=self.funds.normal())
 
     @property
     def actual_amount(self):
-        total = self.funds.approved().aggregate(total=models.Sum('amount'))['total']
+        total = self.funds.approved().aggregate(
+            total=models.Sum('amount'))['total']
         return 0 if total is None else total
 
     @property

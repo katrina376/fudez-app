@@ -1,15 +1,17 @@
 from django.db import models
 
+
 class Subject(models.Model):
     # Kind Choices
     INCOME = 'I'
     EXPENSE = 'E'
     KIND_CHOICES = (
         (INCOME, '收入'),
-        (EXPENSE, '支出')
+        (EXPENSE, '支出'),
     )
 
-    project = models.ForeignKey('budget.Project', on_delete=models.CASCADE, related_name='subjects')
+    project = models.ForeignKey(
+        'budget.Project', on_delete=models.CASCADE, related_name='subjects')
     name = models.CharField(max_length=16)
     kind = models.CharField(max_length=1, choices=KIND_CHOICES)
 
