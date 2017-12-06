@@ -1,20 +1,25 @@
-from rest_framework import viewsets, permissions, mixins
+from django.shortcuts import get_object_or_404
+from rest_framework import viewsets, permissions
 from rest_framework.decorators import detail_route, list_route
 from rest_framework.response import Response
 
 from account.models import User
-from account.serializers import BasicUserSerializer, UserSerializer
+from account.serializers import UserSerializer, SimpleUserSerializer, FullUserSerializer
 
 from .permissions import IsAdminUserOrReadOnly
 
-from django.shortcuts import get_object_or_404
 
 class UserViewSet(viewsets.ModelViewSet):
+    lookup_field = 'username'
+
     queryset = User.objects.all()
     permission_classes = (permissions.IsAuthenticated, IsAdminUserOrReadOnly)
 
     def get_serializer_class(self):
         if self.request.method in permissions.SAFE_METHODS:
-            return UserSerializer
+            if self.action == 'list':
+                return SimpleUserSerializer
+            else:
+                return FullUserSerializer
         else:
-            return BasicUserSerializer
+            return UserSerializer
