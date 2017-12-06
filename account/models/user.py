@@ -23,13 +23,17 @@ class User(AbstractBaseUser, PermissionsMixin):
         (ENGINEER, '工程師')
     )
 
-    id = models.UUIDField(default=uuid.uuid4, editable=False)
-    username = models.CharField(max_length=16, primary_key=True, unique=True)
+    id = models.UUIDField(
+        default=uuid.uuid4, primary_key=True, editable=False)
+    username = models.CharField(max_length=16, unique=True)
     name = models.CharField(max_length=16)
     email = models.EmailField()
 
-    department = models.ForeignKey('account.Department', on_delete=models.PROTECT, related_name='users')
-    kind = models.CharField(max_length=1, choices=KIND_CHOICES, default=DEPARTMENT)
+    department = models.ForeignKey(
+        'account.Department', on_delete=models.PROTECT,
+        related_name='users')
+    kind = models.CharField(
+        max_length=1, choices=KIND_CHOICES, default=DEPARTMENT)
 
     create_time = models.DateTimeField(auto_now_add=True)
     edit_time = models.DateTimeField(auto_now=True)
