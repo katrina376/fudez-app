@@ -1,23 +1,23 @@
-from rest_framework import viewsets, permissions, mixins, status
+from django.shortcuts import get_object_or_404
+from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import detail_route, list_route
 from rest_framework.response import Response
 
 from account.models import Department, User
-from account.serializers import BasicDepartmentSerializer, DepartmentSerializer
+from account.serializers import DepartmentSerializer, FullDepartmentSerializer
 
 from .permissions import IsAdminUserOrReadOnly
 
-from django.shortcuts import get_object_or_404
 
 class DepartmentViewSet(viewsets.ModelViewSet):
     queryset = Department.objects.all()
-    permission_classes = (permissions.IsAuthenticated, )
+    permission_classes = (permissions.IsAuthenticated, IsAdminUserOrReadOnly)
 
     def get_serializer_class(self):
         if self.request.method in permissions.SAFE_METHODS:
-            return DepartmentSerializer
+            return FullDepartmentSerializer
         else:
-            return BasicDepartmentSerializer
+            return DepartmentSerializer
 
     @detail_route(methods=['patch'], url_path='set-assistant')
     def set_assistant(self, request, pk=None):
