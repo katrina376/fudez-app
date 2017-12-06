@@ -2,12 +2,13 @@ import os
 from datetime import datetime
 
 from django.conf import settings
+from django.contrib.auth import get_user_model
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import models
 from django.utils import timezone
 
-from account.models import User
 from core.models import Fund
+
 
 def file_path(instance, filename):
     ts = int(datetime.timestamp(timezone.now()))
@@ -15,65 +16,16 @@ def file_path(instance, filename):
     name = '{}_{}'.format(str(ts), filename)
     return os.path.join(path, name)
 
+
 class RequirementQuerySet(models.QuerySet):
-    def advances(self):
-        return self.filter(kind=Requirement.ADVANCE)
+    def advance(self):
+        return self.filter(regularrequirement__isnull=True)
 
-    def reimburses(self):
-        return self.filter(kind=Requirement.REIMBURSE)
+    def regular(self):
+        return self.filter(regularrequirement__isnull=False)
 
-class RequirementManager(models.Manager):
-    def get_queryset(self):
-        return RequirementQuerySet(self.model, using=self._db)
-
-    def advances(self):
-        return self.get_queryset().advances()
-
-    def reimburses(self):
-        return self.get_queryset().reimburses()
-
-    def _add_bank_info(instance, bank_name, bank_code, branch_name, account, account_name):
-        instance.bank_name = bank_name
-        instance.bank_code = bank_code
-        instance.branch_name = branch_name
-        instance.account = account
-        instance.account_name = account_name
-        instance.save()
-        return instance
-
-    def _attach_receipt(instance, receipt):
-        instance.receipt = receipt
-        instance.save()
-        return instance
-
-    def create_requirement(self, applicant, kind, activity_date, memo,
-                           advance=None,
-                           bank_name='', bank_code='', branch_name='', account='', account_name='',
-                           receipt=None):
-        requirement = self.create(applicant=applicant, kind=kind ,activity_date=activity_date, memo=memo)
-
-        if kind == Requirement.REIMBURSE:
-            requirement = _attach_receipt(requirement, receipt)
-            requirement = _add_bank_info(requirement, bank_name, bank_code, branch_name, account, account_name)
-            # After Advance
-            if advance is not None:
-                requirement.advance = advance
-        elif kind == Requirement.ADVANCE:
-            # Advance
-            requirement = _add_bank_info(requirement, bank_name, bank_code, branch_name, account, account_name)
-
-        requirement.save()
-        return requirement
 
 class Requirement(models.Model):
-    # Kind Choices
-    ADVANCE = 'A'
-    REIMBURSE = 'R'
-    KIND_CHOICES = (
-        (ADVANCE, '預先請款'),
-        (REIMBURSE, '已有收據')
-    )
-
     # State Choices
     DRAFT = 'D'
     SUBMITTED = 'S'
@@ -106,9 +58,10 @@ class Requirement(models.Model):
     applicant = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
     serial_number = models.CharField(max_length=12)
 
-    kind = models.CharField(max_length=1, choices=KIND_CHOICES)
     activity_date = models.DateTimeField(null=True)
     memo = models.TextField()
+
+    is_submitted = models.BooleanField(default=False)
 
     create_time = models.DateTimeField(auto_now_add=True)
     edit_time = models.DateTimeField(null=True)
@@ -129,72 +82,54 @@ class Requirement(models.Model):
     president_verify_time = models.DateTimeField(null=True)
     president_reject_reason = models.TextField()
 
-    # For advances and regular cases
     bank_name = models.CharField(max_length=10)
     bank_code = models.CharField(max_length=4)
     branch_name = models.CharField(max_length=5)
     account = models.CharField(max_length=20)
     account_name = models.CharField(max_length=12)
 
-    # For reimburses after advances
-    advance = models.ForeignKey('core.Requirement', on_delete=models.SET_NULL, null=True, related_name='reimburses')
+    objects = RequirementQuerySet.as_manager()
 
-    # For regular cases and reimburses after advances
-    receipt = models.FileField(upload_to=file_path, null=True)
-
-    objects = RequirementManager()
+    @property
+    def department(self):
+        return self.applicant.department
 
     @property
     def amount(self):
-	    return self.funds.approved().aggregate(models.Sum('amount'))
+        total = self.funds.normal().aggregate(total=models.Sum('amount'))['total']
+        return 0 if total is None else total
 
     @property
     def require_president(self):
-        if self.amount >= 10000 or self.funds.filter(item__subject__is_reserves).exists():
+        if self.amount >= 10000 or self.funds.filter(item__subject__is_reserves=True).exists():
             return True
         else:
             return False
 
     @property
-    def is_balanced(self):
-        if self.kind == REIMBURSE:
-            return True
+    def state(self):
+        if not self.is_submitted:
+            return self.DRAFT
         else:
-            expense_amount = self.expense_records.expense().aggregate(models.SUM('amount'))
-            return_amount = self.expense_records.income().aggregate(models.SUM('amount'))
-            expense_sum = expense_amount - return_amount
-
-            reimburse_amount = Fund.objects.filter(requirement__in=self.reimburses).aggregate(models.SUM('amount'))
-
-            return expense_sum == self.amount - reimburse_amount
+            verify_states = [self.staff_verify, self.chief_verify, self.president_verify]
+            if any(verify is False for verify in verify_states):
+                return self.ABANDONED
+            elif all(verify is True for verify in verify_states[0:1]):
+                if self.require_president and verify_states[2] is True:
+                    return self.COMPLETE
+                else:
+                    return self.SUBMITTED
+            else:
+                return self.SUBMITTED
 
     @property
     def progress(self):
-        if self.state == DRAFT:
-            return None
-        else:
-            if self.kind == REIMBURSE:
-                if self.state == COMPLETE:
-                    return CLOSE_UP
-                elif self.state == ABANDONED:
-                    return REJECT
-                else:
-                    return IN_PROGRESS
-            else:
-                if self.advance.is_balanced and self.receipt:
-                    return IN_PROGRESS
-                elif self.advance.is_balanced:
-                    return NO_RECEIPT
-                elif self.receipt:
-                    return BALANCE_OVERDUE
-                else:
-                    return NO_RECEIPT_AND_BALANCE_OVERDUE
-            return None
+        return None
 
     def edit(self, edit_dict):
-        if not isinstance(edit_dict ,dict):
+        if not isinstance(edit_dict, dict):
             raise TypeError('Input is not a dictionary')
-        if self.state == DRAFT:
+        if self.state == self.DRAFT:
             for name, value in edit_dict:
                 setattr(self, name, value)
             self.edit_time = timezone.now()
@@ -211,26 +146,31 @@ class Requirement(models.Model):
         day = now.day
 
         # department
-        dep = applicant.department
+        dep = self.applicant.department
         # count of the requirements
         count = Requirement.objects.filter(applicant__department=dep).count()
 
-        self.serial_number = str('{:4d}{:2d}{:2d}{:2d}{:2d}'.format(year, month, day, dep.id, count))
+        self.serial_number = str('{:04d}{:02d}{:02d}{:02d}{:02d}'.format(year, month, day, dep.id, count))
 
-        self.state = SUBMITTED
+        self.is_submitted = True
         self.submit_time = now
         self.save()
         return self
 
     def approve(self, reviewer, amount=0):
-        if self.state == SUBMITTED:
-            if reviewer.kind == User.STAFF:
+        try:
+            amount = int(amount)
+        except:
+            raise TypeError('Input amount type error: {}'.format(type(amount)))
+
+        if self.is_submitted:
+            if reviewer.kind == get_user_model().STAFF:
                 self.staff_verify = True
                 self.staff_verify_time = timezone.now()
-            elif reviewer.kind == User.CHIEF:
+            elif reviewer.kind == get_user_model().CHIEF:
                 self.chief_verify = True
                 self.chief_verify_time = timezone.now()
-            elif (reviewer.kind == User.PRESIDENT) and (self.require_president):
+            elif (reviewer.kind == get_user_model().PRESIDENT) and (self.require_president):
                 self.president_verify = True
                 self.president_verify_time = timezone.now()
                 self.president_approve_reserves = Fund.objects.approve_reserves(amount=amount, requirement=self)
@@ -244,10 +184,8 @@ class Requirement(models.Model):
             if self.require_president:
                 if self.president_verify:
                     self.finalize_time = timezone.now()
-                    self.state = COMPLETE
             else:
                 self.finalize_time = timezone.now()
-                self.state = COMPLETE
 
         self.save()
         return self
@@ -256,15 +194,15 @@ class Requirement(models.Model):
         if self.state == SUBMITTED:
             self.state = ABANDONED
             self.finalize_time = timezone.now()
-            if reviewer.kind == User.STAFF:
+            if reviewer.kind == get_user_model().STAFF:
                 self.staff_verify = False
                 self.staff_verify_time = timezone.now()
                 self.staff_reject_reason = reason
-            elif reviewer.kind == User.CHIEF:
+            elif reviewer.kind == get_user_model().CHIEF:
                 self.chief_verify = False
                 self.chief_verify_time = timezone.now()
                 self.chief_reject_reason = reason
-            elif reviewer.kind == User.PRESIDENT:
+            elif reviewer.kind == get_user_model().PRESIDENT:
                 self.president_verify = False
                 self.president_verify_time = timezone.now()
                 self.president_reject_reason = reason
@@ -277,4 +215,51 @@ class Requirement(models.Model):
         return self
 
     def __str__(self):
-        return 'Requirement: Unique ID {0}, serial number {1}'.format(str(self.id),str(self.serial_number))
+        return 'Unique ID {0}, serial number {1}'.format(str(self.id),str(self.serial_number))
+
+
+class AdvanceRequirement(Requirement):
+    class Meta:
+        proxy = True
+
+    @property
+    def is_balanced(self):
+        expense_amount = self.expense_records.expense().aggregate(models.SUM('amount'))['amount__sum']
+        return_amount = self.expense_records.income().aggregate(models.SUM('amount'))['amount__sum']
+        expense_sum = expense_amount - return_amount
+
+        reimburse_amount = Fund.objects.filter(requirement__in=self.reimburses).aggregate(models.SUM('amount'))['amount__sum']
+
+        return expense_sum == self.amount - reimburse_amount
+
+    @property
+    def progress(self):
+        if self.state == self.DRAFT:
+            return None
+        else:
+            if self.reimburses.is_balanced and self.receipt:
+                return self.IN_PROGRESS
+            elif self.advance.is_balanced:
+                return self.NO_RECEIPT
+            elif self.receipt:
+                return self.BALANCE_OVERDUE
+            else:
+                return self.NO_RECEIPT_AND_BALANCE_OVERDUE
+
+
+class RegularRequirement(Requirement):
+    advance = models.ForeignKey('core.Requirement', on_delete=models.SET_NULL, related_name='reimburses', null=True)
+
+    receipt = models.FileField(upload_to=file_path)
+
+    @property
+    def progress(self):
+        if self.state == self.DRAFT:
+            return None
+        else:
+            if self.state == self.COMPLETE:
+                return self.CLOSE_UP
+            elif self.state == self.ABANDONED:
+                return self.REJECT
+            else:
+                return self.IN_PROGRESS
