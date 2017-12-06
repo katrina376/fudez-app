@@ -1,7 +1,12 @@
 from django.db import models
 
+
 class BankAccount(models.Model):
-    department = models.ForeignKey('account.Department', on_delete=models.PROTECT, related_name='bank_accounts')
+    department = models.ForeignKey(
+        'account.Department',
+        on_delete=models.PROTECT,
+        related_name='bank_accounts'
+    )
 
     bank_name = models.CharField(max_length=10)
     bank_code = models.CharField(max_length=4)

@@ -1,7 +1,9 @@
 from django.conf import settings
 from django.db import models
 from django.utils import timezone
+
 from core.models import Requirement
+
 
 class Department(models.Model):
     # Kind Choices
@@ -11,13 +13,16 @@ class Department(models.Model):
     KIND_CHOICES = (
         (EXECUTIVE, '行政部門'),
         (LEGISLATIVE, '立法部門'),
-        (JUDICIAL, '司法部門')
+        (JUDICIAL, '司法部門'),
     )
 
     id = models.IntegerField(primary_key=True, unique=True)
     name = models.CharField(max_length=16, default='暫存')
-    kind = models.CharField(max_length=1, choices=KIND_CHOICES, default=EXECUTIVE)
-    assistant = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='assist_departments')
+    kind = models.CharField(
+        max_length=1, choices=KIND_CHOICES, default=EXECUTIVE)
+    assistant = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
+        null=True, related_name='assist_departments')
 
     @property
     def is_locked(self):
