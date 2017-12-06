@@ -24,7 +24,7 @@ class Department(models.Model):
         res = False
 
         # Check advance requirements
-        advances = Requirement.objects.filter(applicant__department=self, kind=Requirement.ADVANCE)
+        advances = Requirement.objects.advance().filter(applicant__department=self)
         for a in advances:
             if not a.is_complete:
                 res = True
@@ -32,7 +32,7 @@ class Department(models.Model):
 
         # Check UnlockRecord
         now = timezone.now()
-        if self.unlockrecords.filter(start_time__lt=now, end_time__gt=now).exists():
+        if self.unlock_records.filter(start_time__lt=now, end_time__gt=now).exists():
             res = False
 
         return res

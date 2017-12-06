@@ -4,7 +4,7 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, UserManager
 from django.db import models
 
-from account.models import Department
+from .department import Department
 
 class User(AbstractBaseUser, PermissionsMixin):
     # Kind Choices
