@@ -1,6 +1,5 @@
-from .BankAccountViewSet import BankAccountViewSet
-from .DepartmentViewSet import DepartmentViewSet
-from .UnlockRecordViewSet import UnlockRecordViewSet
-from .UserViewSet import UserViewSet
-
-from .MeView import MeView
+from .bank_account import BankAccountViewSet
+from .department import DepartmentViewSet
+from .me import MeView
+from .unlock_record import UnlockRecordViewSet
+from .user import UserViewSet
