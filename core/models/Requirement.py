@@ -26,7 +26,7 @@ class RequirementQuerySet(models.QuerySet):
 
 
 class Requirement(models.Model):
-    # State Choices
+    # State Translate
     DRAFT = 'D'
     SUBMITTED = 'S'
     COMPLETE = 'C'
@@ -35,10 +35,10 @@ class Requirement(models.Model):
         (DRAFT, '草稿'),
         (SUBMITTED, '提交'),
         (COMPLETE, '完成'),
-        (ABANDONED, '失敗')
+        (ABANDONED, '失敗'),
     )
 
-    # Progress Choices
+    # Progress Translate
     CLOSE_UP = 'C'
     REJECT = 'R'
     IN_PROGRESS = 'I'
@@ -51,11 +51,12 @@ class Requirement(models.Model):
         (IN_PROGRESS, '處理中'),
         (NO_RECEIPT, '欠缺收據'),
         (BALANCE_OVERDUE, '餘款尚未繳回'),
-        (NO_RECEIPT_AND_BALANCE_OVERDUE, '欠收據且餘款未繳回')
+        (NO_RECEIPT_AND_BALANCE_OVERDUE, '欠收據且餘款未繳回'),
     )
 
     # General fields for all kinds of requirement
-    applicant = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    applicant = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
     serial_number = models.CharField(max_length=12)
 
     activity_date = models.DateTimeField(null=True)
@@ -78,7 +79,8 @@ class Requirement(models.Model):
 
     # For cases that require_president = True
     president_verify = models.NullBooleanField(default=None)
-    president_approve_reserves = models.OneToOneField('core.Fund', on_delete=models.CASCADE, null=True, related_name='approve_reserves')
+    president_approve_reserves = models.OneToOneField(
+        'core.Fund', on_delete=models.CASCADE, null=True, related_name='approve_reserves')
     president_verify_time = models.DateTimeField(null=True)
     president_reject_reason = models.TextField()
 
@@ -96,7 +98,8 @@ class Requirement(models.Model):
 
     @property
     def amount(self):
-        total = self.funds.normal().aggregate(total=models.Sum('amount'))['total']
+        total = self.funds.normal().aggregate(
+            total=models.Sum('amount'))['total']
         return 0 if total is None else total
 
     @property
@@ -111,7 +114,8 @@ class Requirement(models.Model):
         if not self.is_submitted:
             return self.DRAFT
         else:
-            verify_states = [self.staff_verify, self.chief_verify, self.president_verify]
+            verify_states = [self.staff_verify,
+                             self.chief_verify, self.president_verify]
             if any(verify is False for verify in verify_states):
                 return self.ABANDONED
             elif all(verify is True for verify in verify_states[0:1]):
@@ -136,7 +140,8 @@ class Requirement(models.Model):
             self.save()
             return self
         else:
-            raise Exception('This requirement is not a draft: {}'.format(self.id))
+            raise Exception(
+                'This requirement is not a draft: {}'.format(self.id))
 
     def submit(self):
         # Create serial_number = yyyymmdd + dep_id[dd]+ no[dd]
@@ -150,7 +155,8 @@ class Requirement(models.Model):
         # count of the requirements
         count = Requirement.objects.filter(applicant__department=dep).count()
 
-        self.serial_number = str('{:04d}{:02d}{:02d}{:02d}{:02d}'.format(year, month, day, dep.id, count))
+        self.serial_number = str('{:04d}{:02d}{:02d}{:02d}{:02d}'.format(
+            year, month, day, dep.id, count))
 
         self.is_submitted = True
         self.submit_time = now
@@ -173,11 +179,14 @@ class Requirement(models.Model):
             elif (reviewer.kind == get_user_model().PRESIDENT) and (self.require_president):
                 self.president_verify = True
                 self.president_verify_time = timezone.now()
-                self.president_approve_reserves = Fund.objects.approve_reserves(amount=amount, requirement=self)
+                self.president_approve_reserves = Fund.objects.approve_reserves(
+                    amount=amount, requirement=self)
             else:
-                raise ValueError('User kind is not valid: {}'.format(reviewer.get_kind_display()))
+                raise ValueError('User kind is not valid: {}'.format(
+                    reviewer.get_kind_display()))
         else:
-            raise ValueError('Requirement cannot be reviewed: {}'.format(self.id))
+            raise ValueError(
+                'Requirement cannot be reviewed: {}'.format(self.id))
 
         # Close up after all required reviews are complete
         if self.staff_verify and self.chief_verify:
@@ -207,15 +216,17 @@ class Requirement(models.Model):
                 self.president_verify_time = timezone.now()
                 self.president_reject_reason = reason
             else:
-                raise ValueError('User kind is not valid: {}'.format(reviewer.get_kind_display()))
+                raise ValueError('User kind is not valid: {}'.format(
+                    reviewer.get_kind_display()))
         else:
-            raise ValueError('Requirement cannot be reviewed: {}'.format(self.id))
+            raise ValueError(
+                'Requirement cannot be reviewed: {}'.format(self.id))
 
         self.save()
         return self
 
     def __str__(self):
-        return 'Unique ID {0}, serial number {1}'.format(str(self.id),str(self.serial_number))
+        return 'Unique ID {0}, serial number {1}'.format(str(self.id), str(self.serial_number))
 
 
 class AdvanceRequirement(Requirement):
@@ -224,11 +235,14 @@ class AdvanceRequirement(Requirement):
 
     @property
     def is_balanced(self):
-        expense_amount = self.expense_records.expense().aggregate(models.SUM('amount'))['amount__sum']
-        return_amount = self.expense_records.income().aggregate(models.SUM('amount'))['amount__sum']
+        expense_amount = self.expense_records.expense().aggregate(
+            models.SUM('amount'))['amount__sum']
+        return_amount = self.expense_records.income().aggregate(
+            models.SUM('amount'))['amount__sum']
         expense_sum = expense_amount - return_amount
 
-        reimburse_amount = Fund.objects.filter(requirement__in=self.reimburses).aggregate(models.SUM('amount'))['amount__sum']
+        reimburse_amount = Fund.objects.filter(
+            requirement__in=self.reimburses).aggregate(models.SUM('amount'))['amount__sum']
 
         return expense_sum == self.amount - reimburse_amount
 
@@ -248,7 +262,9 @@ class AdvanceRequirement(Requirement):
 
 
 class RegularRequirement(Requirement):
-    advance = models.ForeignKey('core.Requirement', on_delete=models.SET_NULL, related_name='reimburses', null=True)
+    advance = models.ForeignKey(
+        'core.Requirement', on_delete=models.SET_NULL,
+        related_name='regular', null=True)
 
     receipt = models.FileField(upload_to=file_path)
 
