@@ -43,7 +43,6 @@ class SimpleUserSerializer(serializers.ModelSerializer):
         return obj.get_kind_display()
 
     def get_department(self, obj):
-        print(obj)
         return obj.department.name
 
 
