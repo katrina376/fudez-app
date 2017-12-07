@@ -12,6 +12,10 @@ class Book(models.Model):
     announce_date = models.DateField()
 
     @property
+    def departments(self):
+        return [prj.department for prj in self.projects.all()]
+
+    @property
     def estimated_income(self):
         return sum(project.estimated_income for project in self.projects.all())
 
