@@ -2,8 +2,8 @@ from rest_framework import serializers
 
 from budget.models import Book
 
+from budget.serializers import BudgetDepartmentSerializer
 from budget.serializers import FullProjectSerializer
-
 
 class BookSerializer(serializers.ModelSerializer):
     class Meta:
@@ -29,7 +29,7 @@ class SimpleBookSerializer(serializers.ModelSerializer):
 
 
 class FullBookSerializer(serializers.ModelSerializer):
-    projects = FullProjectSerializer(many=True)
+    departments = BudgetDepartmentSerializer(many=True)
 
     class Meta:
         model = Book
@@ -43,7 +43,7 @@ class FullBookSerializer(serializers.ModelSerializer):
             'estimated_expense',
             'actual_income',
             'actual_expense',
-            'projects',
+            'departments',
         )
         read_only_fields = fields
 
