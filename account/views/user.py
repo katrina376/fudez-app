@@ -4,7 +4,7 @@ from rest_framework.decorators import detail_route, list_route
 from rest_framework.response import Response
 
 from account.models import User
-from account.serializers import UserSerializer, SimpleUserSerializer, FullUserSerializer
+from account.serializers import UserSerializer, SimpleUserSerializer, FullUserSerializer, UserOverwriteSerializer
 
 from .permissions import IsAdminUserOrReadOnly
 
@@ -22,4 +22,7 @@ class UserViewSet(viewsets.ModelViewSet):
             else:
                 return FullUserSerializer
         else:
-            return UserSerializer
+            if self.request.method.lower() == 'post':
+                return UserSerializer
+            else:
+                return UserOverwriteSerializer

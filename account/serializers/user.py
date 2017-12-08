@@ -24,6 +24,25 @@ class UserSerializer(serializers.ModelSerializer):
         return user
 
 
+class UserOverwriteSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = (
+            'username',
+            'kind',
+            'department',
+        )
+
+
+class UserUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = (
+            'name',
+            'email',
+        )
+
+
 class SimpleUserSerializer(serializers.ModelSerializer):
     department = serializers.SerializerMethodField()
     kind = serializers.SerializerMethodField()
