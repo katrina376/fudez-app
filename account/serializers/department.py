@@ -25,11 +25,10 @@ class SimpleDepartmentSerializer(serializers.ModelSerializer):
         return obj.get_kind_display()
 
 
-class FullDepartmentSerializer(serializers.ModelSerializer):
+class FullDepartmentSerializer(SimpleDepartmentSerializer):
     from .user import SimpleUserSerializer
 
     assistant = SimpleUserSerializer()
-    kind = serializers.SerializerMethodField()
 
     class Meta:
         model = Department
@@ -40,6 +39,3 @@ class FullDepartmentSerializer(serializers.ModelSerializer):
             'assistant',
         )
         read_only_fields = fields
-
-    def get_kind(self, obj):
-        return obj.get_kind_display()
