@@ -1,7 +1,8 @@
 from rest_framework import serializers
 
 from budget.models import Project
-from budget.serializers import FullSubjectSerializer
+
+from .subject import FullSubjectSerializer
 
 
 class ProjectSerializer(serializers.ModelSerializer):

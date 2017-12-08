@@ -1,7 +1,8 @@
 from rest_framework import serializers
 
 from budget.models import Subject
-from budget.serializers import FullItemSerializer
+
+from .item import FullItemSerializer
 
 
 class SubjectSerializer(serializers.ModelSerializer):

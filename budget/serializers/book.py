@@ -2,8 +2,7 @@ from rest_framework import serializers
 
 from budget.models import Book
 
-from budget.serializers import BudgetDepartmentSerializer
-from budget.serializers import FullProjectSerializer
+from .department import BudgetDepartmentSerializer
 
 class BookSerializer(serializers.ModelSerializer):
     class Meta:

@@ -1,6 +1,6 @@
-from .ItemSerializer import ItemSerializer, SimpleItemSerializer, FullItemSerializer
-from .SubjectSerializer import SubjectSerializer, SimpleSubjectSerializer, FullSubjectSerializer
-from .ProjectSerializer import ProjectSerializer, SimpleProjectSerializer, FullProjectSerializer
-from .DepartmentSerializer import BudgetDepartmentSerializer
-from .BookSerializer import BookSerializer, SimpleBookSerializer, FullBookSerializer
-from .SessionSerializer import SessionSerializer, SimpleSessionSerializer, FullSessionSerializer
+from .book import BookSerializer, SimpleBookSerializer, FullBookSerializer
+from .department import BudgetDepartmentSerializer
+from .item import ItemSerializer, SimpleItemSerializer, FullItemSerializer
+from .session import SessionSerializer, SimpleSessionSerializer, FullSessionSerializer
+from .subject import SubjectSerializer, SimpleSubjectSerializer, FullSubjectSerializer
+from .project import ProjectSerializer, SimpleProjectSerializer, FullProjectSerializer

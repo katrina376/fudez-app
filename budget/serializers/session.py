@@ -1,7 +1,8 @@
 from rest_framework import serializers
 
 from budget.models import Session
-from budget.serializers import FullBookSerializer
+
+from .book import FullBookSerializer
 
 
 class SessionSerializer(serializers.ModelSerializer):

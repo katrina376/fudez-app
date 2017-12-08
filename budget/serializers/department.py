@@ -1,7 +1,8 @@
 from rest_framework import serializers
 
 from account.models import Department
-from budget.serializers import FullProjectSerializer
+
+from .project import FullProjectSerializer
 
 
 class BudgetDepartmentSerializer(serializers.ModelSerializer):
@@ -9,7 +10,11 @@ class BudgetDepartmentSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Department
-        fields = ('projects',)
+        fields = (
+            'id',
+            'name',
+            'projects',
+        )
         read_only_fields = fields
 
     @staticmethod
