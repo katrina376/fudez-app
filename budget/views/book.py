@@ -3,11 +3,11 @@ from rest_framework import viewsets, permissions
 
 from account.models import Department
 from budget.models import Book
-from budget.serializers import BookSerializer
+from budget.serializers import FullBookSerializer
 
 
 class BookViewSet(viewsets.ModelViewSet):
-    serializer_class = BookSerializer
+    serializer_class = FullBookSerializer
     permission_classes = (permissions.IsAuthenticated,)
 
     def get_queryset(self):
