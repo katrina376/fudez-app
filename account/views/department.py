@@ -21,10 +21,10 @@ class DepartmentViewSet(viewsets.ModelViewSet):
 
     @detail_route(methods=['patch'], url_path='set-assistant')
     def set_assistant(self, request, pk=None):
-        department = get_object_or_404(self.queryset, pk=pk)
-        user_pk = request.data['user']
-        assistant = get_object_or_404(User.objects.all(), pk=user_pk)
+        department = get_object_or_404(self.get_queryset(), pk=pk)
+        username = request.data['user']
+        assistant = get_object_or_404(User.objects.all(), username=username)
         department.assistant = assistant
         department.save()
         return Response(status=status.HTTP_200_OK,
-                        data=self.get_serializer(department).data)
+                        data=FullDepartmentSerializer(department).data)
