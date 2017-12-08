@@ -11,26 +11,23 @@ from .permissions import IsMember
 class BankAccountViewSet(viewsets.ModelViewSet):
     permission_classes = (permissions.IsAuthenticated, IsMember)
     parent = 'department'
+    parent_lookup = '{}_pk'.format(parent)
 
     @property
     def parent_pk(self):
-        if '{}_pk'.format(self.parent) in self.kwargs:
-            return self.kwargs['{}_pk'.format(self.parent)]
+        if self.parent_lookup in self.kwargs:
+            return int(self.kwargs[self.parent_lookup])
         else:
             return None
-
-    def initial(self, request, *args, **kwargs):
-        if self.request.method not in permissions.SAFE_METHODS:
-            data = self.request.data
-            data[self.parent] = self.parent_pk
-            request._request.POST = data
-        return super(BankAccountViewSet, self).initial(request, *args, **kwargs)
 
     def get_serializer_class(self):
         if self.request.method in permissions.SAFE_METHODS:
             return FullBankAccountSerializer
         else:
             return BankAccountSerializer
+
+    def get_serializer_context(self):
+        return {self.parent: self.parent_pk}
 
     def get_queryset(self):
         return BankAccount.objects.filter(department__pk=self.parent_pk)
