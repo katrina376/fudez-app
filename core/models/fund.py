@@ -54,7 +54,7 @@ class Fund(models.Model):
     item = models.ForeignKey(
         'budget.Item', on_delete=models.PROTECT, related_name='funds')
     requirement = models.ForeignKey(
-        'core.Requirement', on_delete=models.CASCADE, related_name='funds')
+        'Requirement', on_delete=models.CASCADE, related_name='funds')
 
     amount = models.PositiveIntegerField()
     memo = models.TextField()

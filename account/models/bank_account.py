@@ -3,7 +3,7 @@ from django.db import models
 
 class BankAccount(models.Model):
     department = models.ForeignKey(
-        'account.Department',
+        'Department',
         on_delete=models.PROTECT,
         related_name='bank_accounts'
     )

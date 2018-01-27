@@ -4,7 +4,6 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, UserManager
 from django.db import models
 
-from .department import Department
 
 class User(AbstractBaseUser, PermissionsMixin):
     # Kind Choices
@@ -30,7 +29,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     email = models.EmailField()
 
     department = models.ForeignKey(
-        'account.Department', on_delete=models.PROTECT,
+        'Department', on_delete=models.PROTECT,
         related_name='users')
     kind = models.CharField(
         max_length=1, choices=KIND_CHOICES, default=DEPARTMENT)

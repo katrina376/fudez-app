@@ -80,7 +80,7 @@ class Requirement(models.Model):
     # For cases that require_president = True
     president_verify = models.NullBooleanField(default=None)
     president_approve_reserves = models.OneToOneField(
-        'core.Fund', on_delete=models.CASCADE, null=True, related_name='approve_reserves')
+        'Fund', on_delete=models.CASCADE, null=True, related_name='approve_reserves')
     president_verify_time = models.DateTimeField(null=True)
     president_reject_reason = models.TextField()
 
@@ -263,7 +263,7 @@ class AdvanceRequirement(Requirement):
 
 class RegularRequirement(Requirement):
     advance = models.ForeignKey(
-        'core.Requirement', on_delete=models.SET_NULL,
+        'Requirement', on_delete=models.SET_NULL,
         related_name='regular', null=True)
 
     receipt = models.FileField(upload_to=file_path)

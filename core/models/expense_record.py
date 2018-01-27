@@ -19,7 +19,7 @@ class ExpenseRecord(models.Model):
     )
 
     requirement = models.ForeignKey(
-        'core.Requirement', related_name='expense_records')
+        'Requirement', related_name='expense_records')
     kind = models.CharField(max_length=1, choices=KIND_CHOICES)
 
     memo = models.TextField()

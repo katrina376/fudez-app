@@ -2,7 +2,7 @@ from django.db import models
 
 
 class Project(models.Model):
-    book = models.ForeignKey('budget.Book', related_name='projects')
+    book = models.ForeignKey('Book', related_name='projects')
     department = models.ForeignKey(
         'account.Department', on_delete=models.PROTECT, related_name='projects')
     name = models.CharField(max_length=16)

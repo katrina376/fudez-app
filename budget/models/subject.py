@@ -19,7 +19,7 @@ class Subject(models.Model):
     )
 
     project = models.ForeignKey(
-        'budget.Project', on_delete=models.CASCADE, related_name='subjects')
+        'Project', on_delete=models.CASCADE, related_name='subjects')
     name = models.CharField(max_length=16)
     kind = models.CharField(max_length=1, choices=KIND_CHOICES)
 

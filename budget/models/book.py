@@ -3,7 +3,7 @@ from django.db import models
 
 class Book(models.Model):
     session = models.ForeignKey(
-        'budget.Session', on_delete=models.CASCADE, related_name='books')
+        'Session', on_delete=models.CASCADE, related_name='books')
 
     name = models.CharField(max_length=32)
     description = models.TextField()
