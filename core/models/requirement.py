@@ -230,9 +230,6 @@ class Requirement(models.Model):
 
 
 class AdvanceRequirement(Requirement):
-    class Meta:
-        proxy = True
-
     @property
     def is_balanced(self):
         expense_amount = self.expense_records.expense().aggregate(
