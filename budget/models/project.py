@@ -1,7 +1,5 @@
 from django.db import models
 
-from .subject import Subject
-
 
 class Project(models.Model):
     book = models.ForeignKey('budget.Book', related_name='projects')
@@ -11,16 +9,16 @@ class Project(models.Model):
 
     @property
     def estimated_income(self):
-        return sum(subject.estimated_income for subject in self.subjects.filter(kind=Subject.INCOME))
+        return sum(subject.estimated_income for subject in self.subjects.income())
 
     @property
     def estimated_expense(self):
-        return sum(subject.estimated_expense for subject in self.subjects.filter(kind=Subject.EXPENSE))
+        return sum(subject.estimated_expense for subject in self.subjects.expense())
 
     @property
     def actual_income(self):
-        return sum(subject.actual_income for subject in self.subjects.filter(kind=Subject.INCOME))
+        return sum(subject.actual_income for subject in self.subjects.income())
 
     @property
     def actual_expense(self):
-        return sum(subject.actual_expense for subject in self.subjects.filter(kind=Subject.EXPENSE))
+        return sum(subject.actual_expense for subject in self.subjects.expense())

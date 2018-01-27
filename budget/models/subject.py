@@ -1,6 +1,14 @@
 from django.db import models
 
 
+class SubjectQuerySet(models.QuerySet):
+    def income(self):
+        return self.filter(kind=Subject.INCOME)
+
+    def expense(self):
+        return self.filter(kind=Subject.EXPENSE)
+
+
 class Subject(models.Model):
     # Kind Choices
     INCOME = 'I'
@@ -16,6 +24,8 @@ class Subject(models.Model):
     kind = models.CharField(max_length=1, choices=KIND_CHOICES)
 
     is_reserves = models.BooleanField(default=False)
+
+    objects = SubjectQuerySet.as_manager()
 
     @property
     def estimated_amount(self):
