@@ -18,10 +18,10 @@ def file_path(instance, filename):
 
 
 class RequirementQuerySet(models.QuerySet):
-    def advance(self):
+    def advances(self):
         return self.filter(regularrequirement__isnull=True)
 
-    def regular(self):
+    def regulars(self):
         return self.filter(regularrequirement__isnull=False)
 
 
