@@ -1,8 +1,7 @@
+from django.apps import apps
 from django.conf import settings
 from django.db import models
 from django.utils import timezone
-
-from core.models import Requirement
 
 
 class Department(models.Model):
@@ -29,7 +28,8 @@ class Department(models.Model):
         res = False
 
         # Check advance requirements
-        advances = Requirement.objects.advance().filter(applicant__department=self)
+        advances = apps.get_model('core.AdvanceRequirement').objects.filter(
+            applicant__department=self)
         for a in advances:
             if not a.is_complete:
                 res = True

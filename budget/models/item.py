@@ -1,6 +1,5 @@
+from django.apps import apps
 from django.db import models
-
-from core.models import Requirement
 
 
 class Item(models.Model):
@@ -14,11 +13,13 @@ class Item(models.Model):
 
     @property
     def advances(self):
-        return Requirement.objects.advances().filter(funds__in=self.funds.normal())
+        return apps.get_model('core.Requirement').objects.advances().filter(
+            funds__in=self.funds.normal())
 
     @property
     def regulars(self):
-        return Requirement.objects.regulars().filter(funds__in=self.funds.normal())
+        return apps.get_model('core.Requirement').objects.regulars().filter(
+            funds__in=self.funds.normal())
 
     @property
     def actual_amount(self):

@@ -1,13 +1,12 @@
 import os
 from datetime import datetime
 
+from django.apps import apps
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import models
 from django.utils import timezone
-
-from core.models import Fund
 
 
 def file_path(instance, filename):
@@ -179,7 +178,7 @@ class Requirement(models.Model):
             elif (reviewer.kind == get_user_model().PRESIDENT) and (self.require_president):
                 self.president_verify = True
                 self.president_verify_time = timezone.now()
-                self.president_approve_reserves = Fund.objects.approve_reserves(
+                self.president_approve_reserves = apps.get_model('core.Fund').objects.approve_reserves(
                     amount=amount, requirement=self)
             else:
                 raise ValueError('User kind is not valid: {}'.format(
@@ -238,8 +237,7 @@ class AdvanceRequirement(Requirement):
             models.SUM('amount'))['amount__sum']
         expense_sum = expense_amount - return_amount
 
-        reimburse_amount = Fund.objects.filter(
-            requirement__in=self.reimburses).aggregate(models.SUM('amount'))['amount__sum']
+        reimburse_amount = apps.get_model('core.Fund').objects.filter(requirement__in=self.reimburses).aggregate(models.SUM('amount'))['amount__sum']
 
         return expense_sum == self.amount - reimburse_amount
 
