@@ -41,3 +41,10 @@ class FullItemSerializer(serializers.ModelSerializer):
             'funds',
         )
         read_only_fields = fields
+
+    @staticmethod
+    def setup_eager_loading(queryset):
+        queryset = queryset.prefetch_related(
+            'funds',
+        )
+        return queryset

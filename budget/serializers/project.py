@@ -50,5 +50,9 @@ class FullProjectSerializer(SimpleProjectSerializer):
 
     @staticmethod
     def setup_eager_loading(queryset):
-        queryset = queryset.prefetch_related('subjects')
+        queryset = queryset.prefetch_related(
+            'subjects',
+            'subjects__items',
+            'subjects__items__funds',
+        )
         return queryset

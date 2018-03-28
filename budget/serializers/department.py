@@ -19,5 +19,10 @@ class BudgetDepartmentSerializer(serializers.ModelSerializer):
 
     @staticmethod
     def setup_eager_loading(queryset):
-        queryset = queryset.prefetch_related('projects')
+        queryset = queryset.prefetch_related(
+            'projects',
+            'projects__subjects',
+            'projects__subjects__items',
+            'projects__subjects__items__funds',
+        )
         return queryset
