@@ -4,7 +4,8 @@ from datetime import timedelta
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', None)
+SECRET_KEY = os.environ.get(
+    'DJANGO_SECRET_KEY', os.environ.get('DJANGO_SECRET_KEY'))
 
 DEBUG = True
 
@@ -46,7 +47,7 @@ CORS_ORIGIN_ALLOW_ALL = True
 
 AUTH_USER_MODEL = 'account.User'
 
-ROOT_URLCONF = 'main.urls'
+ROOT_URLCONF = 'fudez.urls'
 
 TEMPLATES = [
     {
@@ -64,7 +65,7 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'main.wsgi.application'
+WSGI_APPLICATION = 'fudez.wsgi.application'
 
 
 # Database
